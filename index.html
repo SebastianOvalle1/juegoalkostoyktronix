@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Escape Room Virtual</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 20px;
+    }
+
+    .header img {
+      max-height: 60px;
+      object-fit: contain;
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    .section {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .active {
+      display: block;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      background-color: #007dc6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    .success {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="https://i.ibb.co/pBNVSXbD/ALKOSTO.jpg" alt="ALKOSTO">
+      <img src="https://i.ibb.co/QvJtSKF0/KTRONIX.png" alt="KTRONIX">
+    </div>
+
+    <h1>Mini Escape Room</h1>
+    
+    <div id="intro" class="section active">
+      <h2>¡Bienvenido!</h2>
+      <p>Resuelve cada acertijo para escapar de la oficina virtual. Solo puedes avanzar si la respuesta es correcta.</p>
+      <button onclick="nextSection('puzzle1')">Comenzar</button>
+    </div>
+
+    <!-- PREGUNTAS GENERADAS -->
+   <!-- INICIO PREGUNTAS MULTIPLE CHOICE -->
+<div id="puzzle1" class="section">
+  <h2>Pregunta 1 - Cultura General</h2>
+  <p>¿Cuál es el país con mayor población del mundo?</p>
+  <select id="mcq1">
+    <option value="">Selecciona una respuesta</option>
+    <option value="india">India</option>
+    <option value="china">China</option>
+    <option value="estados unidos">Estados Unidos</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq1', 'china', 'puzzle2')">Responder</button>
+</div>
+
+<div id="puzzle2" class="section">
+  <h2>Pregunta 2 - Cultura General</h2>
+  <p>¿Cuál es el río más largo del mundo?</p>
+  <select id="mcq2">
+    <option value="">Selecciona una respuesta</option>
+    <option value="nilo">Nilo</option>
+    <option value="amazonas">Amazonas</option>
+    <option value="yangtze">Yangtsé</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq2', 'amazonas', 'puzzle3')">Responder</button>
+</div>
+
+<div id="puzzle3" class="section">
+  <h2>Pregunta 3 - Cultura General</h2>
+  <p>¿Quién escribió "Cien años de soledad"?</p>
+  <select id="mcq3">
+    <option value="">Selecciona una respuesta</option>
+    <option value="gabriel garcia marquez">Gabriel García Márquez</option>
+    <option value="mario vargas llosa">Mario Vargas Llosa</option>
+    <option value="jorge luis borges">Jorge Luis Borges</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq3', 'gabriel garcia marquez', 'puzzle4')">Responder</button>
+</div>
+
+<div id="puzzle4" class="section">
+  <h2>Pregunta 4 - Cultura General</h2>
+  <p>¿En qué continente se encuentra Egipto?</p>
+  <select id="mcq4">
+    <option value="">Selecciona una respuesta</option>
+    <option value="asia">Asia</option>
+    <option value="africa">África</option>
+    <option value="europa">Europa</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq4', 'africa', 'puzzle5')">Responder</button>
+</div>
+
+<div id="puzzle5" class="section">
+  <h2>Pregunta 5 - Cultura General</h2>
+  <p>¿Qué planeta es conocido como el planeta rojo?</p>
+  <select id="mcq5">
+    <option value="">Selecciona una respuesta</option>
+    <option value="jupiter">Júpiter</option>
+    <option value="marte">Marte</option>
+    <option value="venus">Venus</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq5', 'marte', 'puzzle6')">Responder</button>
+</div>
+
+<div id="puzzle6" class="section">
+  <h2>Pregunta 6 - Cultura General</h2>
+  <p>¿Cuál es el idioma más hablado del mundo?</p>
+  <select id="mcq6">
+    <option value="">Selecciona una respuesta</option>
+    <option value="ingles">Inglés</option>
+    <option value="mandarin">Mandarín</option>
+    <option value="espanol">Español</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq6', 'mandarin', 'puzzle7')">Responder</button>
+</div>
+
+<div id="puzzle7" class="section">
+  <h2>Pregunta 7 - Cultura General</h2>
+  <p>¿Cuántos colores tiene el arcoíris?</p>
+  <select id="mcq7">
+    <option value="">Selecciona una respuesta</option>
+    <option value="5">5</option>
+    <option value="6">6</option>
+    <option value="7">7</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq7', '7', 'puzzle8')">Responder</button>
+</div>
+
+<div id="puzzle8" class="section">
+  <h2>Pregunta 8 - Cultura General</h2>
+  <p>¿Qué instrumento mide los sismos?</p>
+  <select id="mcq8">
+    <option value="">Selecciona una respuesta</option>
+    <option value="termometro">Termómetro</option>
+    <option value="barometro">Barómetro</option>
+    <option value="sismografo">Sismógrafo</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq8', 'sismografo', 'puzzle9')">Responder</button>
+</div>
+
+<div id="puzzle9" class="section">
+  <h2>Pregunta 9 - Cultura General</h2>
+  <p>¿Cuál es el océano más grande del mundo?</p>
+  <select id="mcq9">
+    <option value="">Selecciona una respuesta</option>
+    <option value="atlantico">Atlántico</option>
+    <option value="pacifico">Pacífico</option>
+    <option value="indico">Índico</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq9', 'pacifico', 'puzzle10')">Responder</button>
+</div>
+
+<div id="puzzle10" class="section">
+  <h2>Pregunta 10 - Cultura General</h2>
+  <p>¿Qué gas es esencial para la respiración humana?</p>
+  <select id="mcq10">
+    <option value="">Selecciona una respuesta</option>
+    <option value="dioxido de carbono">Dióxido de carbono</option>
+    <option value="oxigeno">Oxígeno</option>
+    <option value="hidrogeno">Hidrógeno</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq10', 'oxigeno', 'puzzle11')">Responder</button>
+</div>
+
+<div id="puzzle11" class="section">
+  <h2>Pregunta 11 - Historia de la empresa</h2>
+  <p>¿En qué año fue fundada Alkosto?</p>
+  <select id="mcq11">
+    <option value="">Selecciona una respuesta</option>
+    <option value="1987">1987</option>
+    <option value="1991">1991</option>
+    <option value="2000">2000</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq11', '1991', 'puzzle12')">Responder</button>
+</div>
+
+<div id="puzzle12" class="section">
+  <h2>Pregunta 12 - Historia de la empresa</h2>
+  <p>¿Qué es Ktronix?</p>
+  <select id="mcq12">
+    <option value="">Selecciona una respuesta</option>
+    <option value="una marca de ropa">Una marca de ropa</option>
+    <option value="una cadena de tecnologia">Una cadena de tecnología</option>
+    <option value="una empresa de transporte">Una empresa de transporte</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq12', 'una cadena de tecnologia', 'puzzle13')">Responder</button>
+</div>
+
+<div id="puzzle13" class="section">
+  <h2>Pregunta 13 - Historia de la empresa</h2>
+  <p>¿Cuál es el eslogan de Alkosto?</p>
+  <select id="mcq13">
+    <option value="">Selecciona una respuesta</option>
+    <option value="hágalo usted mismo">Hágalo usted mismo</option>
+    <option value="hiper ahorro siempre">Hiper ahorro siempre</option>
+    <option value="vive la tecnologia">Vive la tecnología</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq13', 'hiper ahorro siempre', 'puzzle14')">Responder</button>
+</div>
+
+<div id="puzzle14" class="section">
+  <h2>Pregunta 14 - Historia de la empresa</h2>
+  <p>¿Qué empresa es dueña de Alkosto y Ktronix?</p>
+  <select id="mcq14">
+    <option value="">Selecciona una respuesta</option>
+    <option value="grupo éxito">Grupo Éxito</option>
+    <option value="alkosto s.a.s">Alkosto S.A.S</option>
+    <option value="grupo alkosto">Grupo Alkosto</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq14', 'alkosto s.a.s', 'puzzle15')">Responder</button>
+</div>
+
+<div id="puzzle15" class="section">
+  <h2>Pregunta 15 - Historia de la empresa</h2>
+  <p>¿Ktronix es conocida por vender principalmente qué tipo de productos?</p>
+  <select id="mcq15">
+    <option value="">Selecciona una respuesta</option>
+    <option value="electrodomesticos">Electrodomésticos</option>
+    <option value="tecnologia">Tecnología</option>
+    <option value="juguetes">Juguetes</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq15', 'tecnologia', 'puzzle16')">Responder</button>
+</div>
+
+<div id="puzzle16" class="section">
+  <h2>Pregunta 16 - Historia de la empresa</h2>
+  <p>¿En qué ciudad se abrió la primera tienda Alkosto?</p>
+  <select id="mcq16">
+    <option value="">Selecciona una respuesta</option>
+    <option value="bogota">Bogotá</option>
+    <option value="medellin">Medellín</option>
+    <option value="cali">Cali</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq16', 'bogota', 'puzzle17')">Responder</button>
+</div>
+
+<div id="puzzle17" class="section">
+  <h2>Pregunta 17 - Historia de la empresa</h2>
+  <p>¿Cuántas letras tiene la palabra KTRONIX?</p>
+  <select id="mcq17">
+    <option value="">Selecciona una respuesta</option>
+    <option value="6">6</option>
+    <option value="7">7</option>
+    <option value="8">8</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq17', '7', 'puzzle18')">Responder</button>
+</div>
+
+<div id="puzzle18" class="section">
+  <h2>Pregunta 18 - Historia de la empresa</h2>
+  <p>¿Alkosto ofrece servicio a domicilio?</p>
+  <select id="mcq18">
+    <option value="">Selecciona una respuesta</option>
+    <option value="si">Sí</option>
+    <option value="no">No</option>
+    <option value="solo en bogota">Solo en Bogotá</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq18', 'si', 'puzzle19')">Responder</button>
+</div>
+
+<div id="puzzle19" class="section">
+  <h2>Pregunta 19 - Historia de la empresa</h2>
+  <p>¿Cuál es uno de los valores fundamentales de Alkosto?</p>
+  <select id="mcq19">
+    <option value="">Selecciona una respuesta</option>
+    <option value="puntualidad">Puntualidad</option>
+    <option value="servicio al cliente">Servicio al cliente</option>
+    <option value="ambición">Ambición</option>
+  </select>
+  <button onclick="checkSelectAnswer('mcq19', 'servicio al cliente', 'puzzle20')">Responder</button>
+</div>
+
+    <!-- PREGUNTA FINAL -->
+    <div id="puzzle20" class="section">
+      <h2>¡Última pregunta!</h2>
+      <p>¿Qué color predomina en el logo de Alkosto?</p>
+      <select id="mcq20">
+        <option value="">Selecciona una respuesta</option>
+        <option value="rojo">Rojo</option>
+        <option value="azul">Azul</option>
+        <option value="naranja">Naranja</option>
+      </select>
+      <button onclick="checkSelectAnswer('mcq20', 'naranja', 'final')">Responder</button>
+    </div>
+
+    <!-- FINAL -->
+    <div id="final" class="section">
+      <h2>¡Felicidades!</h2>
+      <p class="success">Has completado correctamente el Escape Room Virtual. ¡Gracias por participar!</p>
+    </div>
+  </div>
+
+  <script>
+    function nextSection(id) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function checkSelectAnswer(selectId, correctAnswer, nextSectionId) {
+      const userAnswer = document.getElementById(selectId).value.toLowerCase();
+      if (userAnswer === correctAnswer.toLowerCase()) {
+        nextSection(nextSectionId);
+      } else {
+        alert("Respuesta incorrecta. Intenta de nuevo.");
+      }
+    }
+  </script>
+</body>
+</html>
