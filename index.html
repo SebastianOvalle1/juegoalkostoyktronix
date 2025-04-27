@@ -67,10 +67,22 @@
     }
 
     #vidas {
-      font-size: 1.2em;
+      font-size: 1.5em;
       margin-bottom: 15px;
       color: #e74c3c;
       font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #vidas-texto {
+      font-size: 0.8em;
+      margin-right: 8px;
+    }
+
+    .corazon {
+      transition: all 0.3s;
     }
 
     #timer-bar {
@@ -142,7 +154,10 @@
 
     <!-- Área de juego -->
     <div id="juego" class="section">
-      <div id="vidas">Vidas: 5</div>
+      <div id="vidas">
+        <span id="vidas-texto">Vidas:</span>
+        <span id="corazones">❤️❤️❤️❤️❤️</span>
+      </div>
       <div id="timer-bar" style="width: 100%;"></div>
       <div id="pregunta-container">
         <div id="pregunta" class="question"></div>
@@ -328,11 +343,17 @@
       }
     ].sort(() => Math.random() - 0.5); // Mezcla aleatoriamente las preguntas
 
+    // Función para actualizar los corazones de vida
+    function actualizarCorazones() {
+      const corazones = document.getElementById('corazones');
+      corazones.innerHTML = '❤️'.repeat(vidas);
+    }
+
     // Función para iniciar el juego
     function iniciarJuego() {
       vidas = 5;
       preguntaActual = 0;
-      document.getElementById('vidas').textContent = `Vidas: ${vidas}`;
+      actualizarCorazones();
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById('juego').classList.add('active');
       mostrarPregunta();
@@ -380,8 +401,8 @@
     // Función para manejar la pérdida de una vida
     function perderVida() {
       vidas--;
+      actualizarCorazones();
       document.getElementById('errorAudio').play();
-      document.getElementById("vidas").textContent = `Vidas: ${vidas}`;
       document.body.classList.add("fade-red");
       setTimeout(() => document.body.classList.remove("fade-red"), 400);
 
