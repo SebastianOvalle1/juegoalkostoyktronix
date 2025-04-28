@@ -161,7 +161,7 @@
       <h2>¡Bienvenido!</h2>
       <p>Responde correctamente las preguntas para completar el desafío.</p>
       <p><strong>Tienes 5 vidas y solo 10 segundos por pregunta.</strong></p>
-      <p>Si fallas una pregunta, perderás una vida y volverás a la primera pregunta.</p>
+      <p>Si fallas una pregunta, perderás una vida, volverás a la primera pregunta y el orden cambiará.</p>
       
       <div class="nombre-container">
         <label for="nombre-jugador">Ingresa tu nombre:</label>
@@ -208,9 +208,10 @@
     let preguntaActual = 0;
     let tiempoRestante;
     let nombreJugador = "";
+    let preguntas = []; // Array de preguntas que se reordenará
 
-    // Todas las preguntas mezcladas aleatoriamente
-    const preguntas = [
+    // Todas las preguntas disponibles
+    const preguntasBase = [
       {
         pregunta: "¿En qué año fue fundada Alkosto?",
         opciones: ["1990", "1987", "1993"],
@@ -361,7 +362,13 @@
         opciones: ["Vibranium", "Adamantium", "Kryptonita"],
         correcta: 0
       }
-    ].sort(() => Math.random() - 0.5); // Mezcla aleatoriamente las preguntas
+    ];
+
+    // Función para mezclar preguntas
+    function mezclarPreguntas() {
+      // Copiamos el array base y lo mezclamos
+      preguntas = [...preguntasBase].sort(() => Math.random() - 0.5);
+    }
 
     // Función para actualizar los corazones de vida
     function actualizarCorazones() {
@@ -394,6 +401,7 @@
       
       vidas = 5;
       preguntaActual = 0;
+      mezclarPreguntas(); // Mezclamos las preguntas al inicio
       actualizarCorazones();
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById('juego').classList.add('active');
@@ -445,15 +453,18 @@
       actualizarCorazones();
       document.getElementById('errorAudio').play();
       document.body.classList.add("fade-red");
-      setTimeout(() => document.body.classList.remove("fade-red"), 400);
-
-      if (vidas <= 0) {
-        finalizarJuego(false);
-      } else {
-        // Volver a la primera pregunta al fallar
-        preguntaActual = 0;
-        mostrarPregunta();
-      }
+      setTimeout(() => {
+        document.body.classList.remove("fade-red");
+        
+        if (vidas <= 0) {
+          finalizarJuego(false);
+        } else {
+          // Volver a la primera pregunta y mezclar el orden
+          preguntaActual = 0;
+          mezclarPreguntas();
+          mostrarPregunta();
+        }
+      }, 400);
     }
 
     // Función para iniciar el temporizador
@@ -506,7 +517,7 @@
         mensajeFinal.innerHTML = `
           <div class="fail">
             <p>¡Se acabaron tus vidas, ${nombreJugador}!</p>
-            <p>Lo sentimos no has escapado de la oficina 😔, mejor suerte para la próxima ves.</p>
+            <p>Inténtalo de nuevo para mejorar tu resultado.</p>
           </div>
         `;
       }
