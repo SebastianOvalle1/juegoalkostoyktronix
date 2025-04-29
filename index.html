@@ -145,6 +145,12 @@
     .nombre-container {
       margin: 20px 0;
     }
+
+    .tiempos {
+      margin-top: 15px;
+      font-size: 0.9em;
+      color: #555;
+    }
   </style>
 </head>
 <body>
@@ -209,6 +215,7 @@
     let tiempoRestante;
     let nombreJugador = "";
     let preguntas = []; // Array de preguntas que se reordenará
+    let horaInicio; // Variable para almacenar la hora de inicio
 
     // Todas las preguntas disponibles
     const preguntasBase = [
@@ -377,8 +384,7 @@
     }
 
     // Función para obtener la fecha y hora formateada
-    function obtenerFechaHora() {
-      const ahora = new Date();
+    function obtenerFechaHora(fecha) {
       const opciones = { 
         day: '2-digit', 
         month: '2-digit', 
@@ -387,7 +393,7 @@
         minute: '2-digit', 
         hour12: true 
       };
-      return ahora.toLocaleString('es-ES', opciones);
+      return fecha.toLocaleString('es-ES', opciones);
     }
 
     // Función para iniciar el juego
@@ -401,6 +407,7 @@
       
       vidas = 5;
       preguntaActual = 0;
+      horaInicio = new Date(); // Guardamos la hora de inicio
       mezclarPreguntas(); // Mezclamos las preguntas al inicio
       actualizarCorazones();
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -502,15 +509,27 @@
       document.getElementById('final').classList.add('active');
       
       const mensajeFinal = document.getElementById('mensaje-final');
+      const horaFin = new Date();
       
       if (ganado) {
         document.getElementById('victoriaAudio').play();
-        const fechaHora = obtenerFechaHora();
+        const fechaHoraInicio = obtenerFechaHora(horaInicio);
+        const fechaHoraFin = obtenerFechaHora(horaFin);
+        
+        // Calcular duración
+        const duracionMs = horaFin - horaInicio;
+        const duracionMin = Math.floor(duracionMs / 60000);
+        const duracionSeg = Math.floor((duracionMs % 60000) / 1000);
+        
         mensajeFinal.innerHTML = `
           <div class="success">
             <p>¡Felicitaciones <strong>${nombreJugador}</strong>!</p>
-            <p>Has escapado de la oficina el ${fechaHora}</p>
-            <p>Eres un verdadero experto en Alkosto y cultura general.</p>
+            <p>Has escapado de la oficina exitosamente.</p>
+            <div class="tiempos">
+              <p><strong>Inicio:</strong> ${fechaHoraInicio}</p>
+              <p><strong>Finalización:</strong> ${fechaHoraFin}</p>
+              <p><strong>Duración:</strong> ${duracionMin} minutos y ${duracionSeg} segundos</p>
+            </div>
           </div>
         `;
       } else {
