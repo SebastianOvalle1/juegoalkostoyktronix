@@ -1,552 +1,1087 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Escape Room Virtual - Alkosto & Ktronix</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background-color: #f4f4f4;
-      margin: 0;
-      padding: 20px;
-    }
-
-    .container {
-      max-width: 600px;
-      margin: auto;
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    .header {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 20px;
-      gap: 20px;
-    }
-
-    .header img {
-      max-height: 60px;
-      object-fit: contain;
-    }
-
-    h1, h2 {
-      text-align: center;
-      color: #2c3e50;
-    }
-
-    .section {
-      display: none;
-      margin-top: 20px;
-    }
-
-    .active {
-      display: block;
-    }
-
-    .btn {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      background-color: #007dc6;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1em;
-      transition: background-color 0.3s;
-    }
-
-    .btn:hover {
-      background-color: #005fa3;
-    }
-
-    #vidas {
-      font-size: 1.5em;
-      margin-bottom: 15px;
-      color: #e74c3c;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    #vidas-texto {
-      font-size: 0.8em;
-      margin-right: 8px;
-    }
-
-    .corazon {
-      transition: all 0.3s;
-    }
-
-    #timer-bar {
-      height: 15px;
-      background: #e74c3c;
-      transition: width 0.3s linear;
-      border-radius: 10px;
-      margin-bottom: 20px;
-    }
-
-    .fade-red {
-      animation: flashRed 0.4s ease;
-    }
-
-    @keyframes flashRed {
-      0% { background-color: #f1f1f1; }
-      50% { background-color: #ffdddd; }
-      100% { background-color: #f1f1f1; }
-    }
-
-    #resultado {
-      font-size: 1.3em;
-      margin-top: 20px;
-      padding: 15px;
-      border-radius: 8px;
-      display: none;
-    }
-
-    .success {
-      background-color: #e8f5e9;
-      color: #2e7d32;
-      padding: 15px;
-      border-radius: 8px;
-      margin: 20px 0;
-    }
-
-    .fail {
-      background-color: #ffebee;
-      color: #c62828;
-      padding: 15px;
-      border-radius: 8px;
-      margin: 20px 0;
-    }
-
-    .question {
-      font-size: 1.2em;
-      margin-bottom: 20px;
-      font-weight: 500;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 1em;
-    }
-
-    .nombre-container {
-      margin: 20px 0;
-    }
-
-    .tiempos {
-      margin-top: 15px;
-      font-size: 0.9em;
-      color: #555;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Battle - Actividad Empresarial</title>
+    <style>
+        /* Estilos existentes (se mantienen igual) */
+        :root {
+            --primary: #4a6baf;
+            --secondary: #ff6b6b;
+            --accent: #4ecdc4;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --red: #ff6b6b;
+            --blue: #4a6baf;
+            --green: #4ecdc4;
+            --yellow: #ffd166;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--dark) 0%, #16213e 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--accent);
+            font-size: 2.5rem;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        h2 {
+            margin: 15px 0;
+            color: var(--accent);
+        }
+        
+        h3 {
+            margin: 15px 0;
+            color: var(--light);
+            text-align: center;
+        }
+        
+        .screen {
+            display: none;
+        }
+        
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .team-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .team {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            width: 220px; /* Aumentado para acomodar el texto */
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px; /* Altura mínima para consistencia */
+        }
+        
+        .team:hover {
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .team.selected {
+            background: var(--primary);
+            box-shadow: 0 0 15px rgba(74, 107, 175, 0.5);
+        }
+        
+        .team-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+        
+        .team-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        
+        .team-area {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            line-height: 1.2;
+            padding: 0 5px;
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        
+        .question-container {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .answers-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .answers-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .team {
+                width: 100%;
+                max-width: 280px;
+            }
+        }
+        
+        .answer-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .answer-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .answer-btn.correct {
+            background: #4caf50;
+            animation: pulse 0.5s;
+        }
+        
+        .answer-btn.incorrect {
+            background: #f44336;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .lives-container {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        
+        .life {
+            color: var(--secondary);
+            font-size: 2rem;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .life.lost {
+            animation: loseLife 0.5s forwards;
+        }
+        
+        @keyframes loseLife {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        
+        .scoreboard {
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .player-score {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .highlight {
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        .timer {
+            font-size: 2rem;
+            text-align: center;
+            margin: 10px 0;
+            color: var(--accent);
+        }
+        
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .player-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .team-red { border-left: 4px solid var(--red); }
+        .team-blue { border-left: 4px solid var(--blue); }
+        .team-green { border-left: 4px solid var(--green); }
+        .team-yellow { border-left: 4px solid var(--yellow); }
+        
+        .team-score {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .team-red-bg { background: rgba(255, 107, 107, 0.2); }
+        .team-blue-bg { background: rgba(74, 107, 175, 0.2); }
+        .team-green-bg { background: rgba(78, 205, 196, 0.2); }
+        .team-yellow-bg { background: rgba(255, 209, 102, 0.2); }
+        
+        .ranking-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            opacity: 1;
+            border-bottom: 3px solid var(--accent);
+        }
+        
+        .ranking-content {
+            display: none;
+        }
+        
+        .ranking-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .team-stats {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <img src="https://i.ibb.co/pBNVSXbD/ALKOSTO.jpg" alt="ALKOSTO">
-      <img src="https://i.ibb.co/QvJtSKF0/KTRONIX.png" alt="KTRONIX">
-    </div>
-
-    <h1>Escape Room Virtual</h1>
-    
-    <!-- Pantalla de inicio -->
-    <div id="intro" class="section active">
-      <h2>¡Bienvenido!</h2>
-      <p>Responde correctamente las preguntas para completar el desafío.</p>
-      <p><strong>Tienes 5 vidas y solo 10 segundos por pregunta.</strong></p>
-      <p>Si fallas una pregunta, perderás una vida, volverás a la primera pregunta y el orden cambiará.</p>
-      
-      <div class="nombre-container">
-        <label for="nombre-jugador">Ingresa tu nombre:</label>
-        <input type="text" id="nombre-jugador" placeholder="Tu nombre aquí">
-      </div>
-      
-      <button class="btn" onclick="iniciarJuego()">Comenzar Juego</button>
-    </div>
-
-    <!-- Área de juego -->
-    <div id="juego" class="section">
-      <div id="vidas">
-        <span id="vidas-texto">Vidas:</span>
-        <span id="corazones">❤️❤️❤️❤️❤️</span>
-      </div>
-      <div id="timer-bar" style="width: 100%;"></div>
-      <div id="pregunta-container">
-        <div id="pregunta" class="question"></div>
-        <button class="btn" onclick="verificarRespuesta(0)"></button>
-        <button class="btn" onclick="verificarRespuesta(1)"></button>
-        <button class="btn" onclick="verificarRespuesta(2)"></button>
-      </div>
-      <div id="resultado"></div>
-    </div>
-
-    <!-- Pantalla final -->
-    <div id="final" class="section">
-      <h2>Resultado Final</h2>
-      <div id="mensaje-final"></div>
-      <button class="btn" onclick="reiniciarJuego()">Jugar de nuevo</button>
-    </div>
-  </div>
-
-  <!-- Efectos de sonido -->
-  <audio id="correctoAudio" src="https://actions.google.com/sounds/v1/games/positive_alert.ogg" preload="auto"></audio>
-  <audio id="errorAudio" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg" preload="auto"></audio>
-  <audio id="victoriaAudio" src="https://actions.google.com/sounds/v1/games/winning_tone.ogg" preload="auto"></audio>
-
-  <script>
-    // Variables del juego
-    let vidas = 5;
-    const tiempoPorPregunta = 10; // 10 segundos por pregunta
-    let intervalo;
-    let preguntaActual = 0;
-    let tiempoRestante;
-    let nombreJugador = "";
-    let preguntas = []; // Array de preguntas que se reordenará
-    let horaInicio; // Variable para almacenar la hora de inicio
-
-    // Todas las preguntas disponibles
-    const preguntasBase = [
-      {
-        pregunta: "¿En qué año fue fundada Alkosto?",
-        opciones: ["1990", "1987", "1993"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Qué es Ktronix?",
-        opciones: ["Una marca de ropa", "Una cadena de tecnología", "Una empresa de transporte"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Cuál es el eslogan de Alkosto?",
-        opciones: ["Hágalo usted mismo", "Hiper ahorro siempre", "Vive la tecnología"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿En qué ciudad se encuentra la sede principal de Alkosto?",
-        opciones: ["Bogotá", "Medellín", "Cali"],
-        correcta: 0
-      },
-      {
-        pregunta: "¿En qué ciudad se abrió la primera tienda Alkosto?",
-        opciones: ["Bogotá", "Medellín", "Cali"],
-        correcta: 0
-      },
-      {
-        pregunta: "¿Cuál es uno de los valores fundamentales de Alkosto?",
-        opciones: ["Puntualidad", "Servicio al cliente", "Ambición"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Cuántas letras tiene la palabra KTRONIX?",
-        opciones: ["6", "7", "8"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Qué tipo de productos se encuentran más en Ktronix?",
-        opciones: ["Electrodomésticos", "Tecnología y electrónica", "Muebles"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Cuál es una diferencia entre Alkosto y Ktronix?",
-        opciones: ["Ktronix tiene más productos de supermercado", "Alkosto es más especializado en celulares", "Ktronix se enfoca más en tecnología de gama alta"],
-        correcta: 2
-      },
-      {
-        pregunta: "¿Qué color predomina en el logo de Alkosto?",
-        opciones: ["Rojo", "Azul", "Naranja"],
-        correcta: 2
-      },
-      {
-        pregunta: "¿Cuál es el verdadero nombre de Iron Man?",
-        opciones: ["Bruce Wayne", "Tony Stark", "Clark Kent"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Qué banda creó la canción 'Bohemian Rhapsody'?",
-        opciones: ["The Beatles", "Queen", "Pink Floyd"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Cuál fue la primera película del Universo Cinematográfico de Marvel?",
-        opciones: ["Thor", "Iron Man", "Hulk"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Qué país tiene más Copas del Mundo de fútbol ganadas?",
-        opciones: ["Alemania", "Argentina", "Brasil"],
-        correcta: 2
-      },
-      {
-        pregunta: "¿Quién interpretó a Walter White en 'Breaking Bad'?",
-        opciones: ["Bryan Cranston", "Kevin Spacey", "Aaron Paul"],
-        correcta: 0
-      },
-      {
-        pregunta: "¿Cuál es el nombre del martillo de Thor?",
-        opciones: ["Stormbreaker", "Mjolnir", "Excalibur"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Qué artista es conocido como 'El Rey del Pop'?",
-        opciones: ["Elvis Presley", "Justin Timberlake", "Michael Jackson"],
-        correcta: 2
-      },
-      {
-        pregunta: "¿Cuál es la capital de Australia?",
-        opciones: ["Sidney", "Melbourne", "Canberra"],
-        correcta: 2
-      },
-      {
-        pregunta: "¿Qué personaje de Marvel es conocido por decir 'Yo soy Groot'?",
-        opciones: ["Rocket", "Groot", "Drax"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Cuál fue la primera serie de Netflix en ganar un Emmy?",
-        opciones: ["Stranger Things", "House of Cards", "Orange is the New Black"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Quién pintó 'La noche estrellada'?",
-        opciones: ["Van Gogh", "Picasso", "Monet"],
-        correcta: 0
-      },
-      {
-        pregunta: "¿En qué país nació el reguetón?",
-        opciones: ["Colombia", "República Dominicana", "Puerto Rico"],
-        correcta: 2
-      },
-      {
-        pregunta: "¿Quién es el villano principal en la saga 'Avengers: Infinity War'?",
-        opciones: ["Loki", "Thanos", "Ultron"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Qué película ganó el Óscar a Mejor Película en 2020?",
-        opciones: ["1917", "Joker", "Parasite"],
-        correcta: 2
-      },
-      {
-        pregunta: "¿Cuál es el idioma más hablado en el mundo?",
-        opciones: ["Inglés", "Mandarín", "Español"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Qué superhéroe usa un escudo con una estrella en el centro?",
-        opciones: ["Capitán América", "Superman", "Flash"],
-        correcta: 0
-      },
-      {
-        pregunta: "¿En qué año murió Freddie Mercury?",
-        opciones: ["1990", "1991", "1993"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Cuál es la ciudad donde ocurre la mayoría de los eventos en 'Stranger Things'?",
-        opciones: ["Derry", "Hawkins", "Salem"],
-        correcta: 1
-      },
-      {
-        pregunta: "¿Cuál es el nombre del villano en 'Black Panther'?",
-        opciones: ["Killmonger", "Red Skull", "Zemo"],
-        correcta: 0
-      },
-      {
-        pregunta: "¿Cuál es el metal ficticio del que está hecho el escudo del Capitán América?",
-        opciones: ["Vibranium", "Adamantium", "Kryptonita"],
-        correcta: 0
-      }
-    ];
-
-    // Función para mezclar preguntas
-    function mezclarPreguntas() {
-      // Copiamos el array base y lo mezclamos
-      preguntas = [...preguntasBase].sort(() => Math.random() - 0.5);
-    }
-
-    // Función para actualizar los corazones de vida
-    function actualizarCorazones() {
-      const corazones = document.getElementById('corazones');
-      corazones.innerHTML = '❤️'.repeat(vidas);
-    }
-
-    // Función para obtener la fecha y hora formateada
-    function obtenerFechaHora(fecha) {
-      const opciones = { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit', 
-        minute: '2-digit', 
-        hour12: true 
-      };
-      return fecha.toLocaleString('es-ES', opciones);
-    }
-
-    // Función para iniciar el juego
-    function iniciarJuego() {
-      nombreJugador = document.getElementById('nombre-jugador').value.trim();
-      
-      if (!nombreJugador) {
-        alert("Por favor ingresa tu nombre para comenzar el juego");
-        return;
-      }
-      
-      vidas = 5;
-      preguntaActual = 0;
-      horaInicio = new Date(); // Guardamos la hora de inicio
-      mezclarPreguntas(); // Mezclamos las preguntas al inicio
-      actualizarCorazones();
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.getElementById('juego').classList.add('active');
-      mostrarPregunta();
-    }
-
-    // Función para mostrar la pregunta actual
-    function mostrarPregunta() {
-      if (vidas <= 0) {
-        finalizarJuego(false);
-        return;
-      }
-
-      const p = preguntas[preguntaActual];
-      document.getElementById("pregunta").textContent = p.pregunta;
-      
-      const botones = document.querySelectorAll("#juego .btn");
-      botones.forEach((btn, i) => {
-        btn.textContent = p.opciones[i];
-      });
-
-      document.getElementById("resultado").style.display = "none";
-      iniciarTemporizador();
-    }
-
-    // Función para verificar la respuesta seleccionada
-    function verificarRespuesta(respuesta) {
-      detenerTemporizador();
-      
-      if (respuesta === preguntas[preguntaActual].correcta) {
-        // Respuesta correcta
-        document.getElementById('correctoAudio').play();
-        preguntaActual++;
+    <div class="container">
+        <h1>🎯 Quiz Battle - Yo Puedo - Alkosto/Ktronix 🎯</h1>
         
-        if (preguntaActual >= preguntas.length) {
-          finalizarJuego(true);
-        } else {
-          mostrarPregunta();
-        }
-      } else {
-        // Respuesta incorrecta
-        perderVida();
-      }
-    }
-
-    // Función para manejar la pérdida de una vida
-    function perderVida() {
-      vidas--;
-      actualizarCorazones();
-      document.getElementById('errorAudio').play();
-      document.body.classList.add("fade-red");
-      setTimeout(() => {
-        document.body.classList.remove("fade-red");
-        
-        if (vidas <= 0) {
-          finalizarJuego(false);
-        } else {
-          // Volver a la primera pregunta y mezclar el orden
-          preguntaActual = 0;
-          mezclarPreguntas();
-          mostrarPregunta();
-        }
-      }, 400);
-    }
-
-    // Función para iniciar el temporizador
-    function iniciarTemporizador() {
-      tiempoRestante = tiempoPorPregunta;
-      const barra = document.getElementById("timer-bar");
-      barra.style.width = "100%";
-      barra.style.backgroundColor = "#e74c3c";
-      
-      intervalo = setInterval(() => {
-        tiempoRestante--;
-        barra.style.width = (tiempoRestante / tiempoPorPregunta) * 100 + "%";
-        
-        // Cambiar a amarillo cuando quedan 3 segundos
-        if (tiempoRestante <= 3) {
-          barra.style.backgroundColor = "#f39c12";
-        }
-        
-        if (tiempoRestante <= 0) {
-          detenerTemporizador();
-          perderVida();
-        }
-      }, 1000);
-    }
-
-    // Función para detener el temporizador
-    function detenerTemporizador() {
-      clearInterval(intervalo);
-    }
-
-    // Función para finalizar el juego
-    function finalizarJuego(ganado) {
-      detenerTemporizador();
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.getElementById('final').classList.add('active');
-      
-      const mensajeFinal = document.getElementById('mensaje-final');
-      const horaFin = new Date();
-      
-      if (ganado) {
-        document.getElementById('victoriaAudio').play();
-        const fechaHoraInicio = obtenerFechaHora(horaInicio);
-        const fechaHoraFin = obtenerFechaHora(horaFin);
-        
-        // Calcular duración
-        const duracionMs = horaFin - horaInicio;
-        const duracionMin = Math.floor(duracionMs / 60000);
-        const duracionSeg = Math.floor((duracionMs % 60000) / 1000);
-        
-        mensajeFinal.innerHTML = `
-          <div class="success">
-            <p>¡Felicitaciones <strong>${nombreJugador}</strong>!</p>
-            <p>Has escapado de la oficina exitosamente.</p>
-            <div class="tiempos">
-              <p><strong>Inicio:</strong> ${fechaHoraInicio}</p>
-              <p><strong>Finalización:</strong> ${fechaHoraFin}</p>
-              <p><strong>Duración:</strong> ${duracionMin} minutos y ${duracionSeg} segundos</p>
+        <!-- Pantalla de inicio -->
+        <div id="welcome-screen" class="screen active">
+            <h2>¡Bienvenido al desafío!</h2>
+            <p>Responde preguntas, acumula puntos y compite con tus colegas.</p>
+            <div style="text-align: center; margin-top: 30px;">
+                <button id="start-btn" class="btn">Comenzar Juego</button>
             </div>
-          </div>
-        `;
-      } else {
-        mensajeFinal.innerHTML = `
-          <div class="fail">
-            <p>¡Se acabaron tus vidas, ${nombreJugador}!</p>
-            <p>Inténtalo de nuevo para mejorar tu resultado.</p>
-          </div>
-        `;
-      }
-    }
+        </div>
+        
+        <!-- Pantalla de registro -->
+        <div id="register-screen" class="screen">
+            <h2>Únete a la batalla</h2>
+            <input type="text" id="player-name" class="input-field" placeholder="Ingresa tu nombre">
+            <h3>Elige tu equipo:</h3>
+            <div class="team-container">
+                <div class="team" data-team="red">
+                    <div class="team-icon">🔴</div>
+                    <div class="team-name">Equipo Rojo</div>
+                    <div class="team-area">CENTR</div>
+                </div>
+                <div class="team" data-team="blue">
+                    <div class="team-icon">🔵</div>
+                    <div class="team-name">Equipo Azul</div>
+                    <div class="team-area">GESTIÓN DE CASOS</div>
+                </div>
+                <div class="team" data-team="green">
+                    <div class="team-icon">🟢</div>
+                    <div class="team-name">Equipo Verde</div>
+                    <div class="team-area">ANILLO 2</div>
+                </div>
+                <div class="team" data-team="yellow">
+                    <div class="team-icon">🟡</div>
+                    <div class="team-name">Equipo Amarillo</div>
+                    <div class="team-area">OTRAS ÁREAS</div>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="join-btn" class="btn">Unirse al Juego</button>
+            </div>
+        </div>
+        
+        <!-- Pantalla de espera -->
+        <div id="waiting-screen" class="screen">
+            <h2>Esperando a que comience el juego...</h2>
+            <p>Jugadores conectados: <span id="players-count">0</span></p>
+            <div class="players-grid" id="players-list">
+                <!-- Jugadores en tiempo real -->
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="start-game-btn" class="btn">Iniciar Juego</button>
+            </div>
+        </div>
+        
+        <!-- Pantalla de juego -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div>Jugador: <span id="current-player" class="highlight">Nombre</span></div>
+                <div>Puntos: <span id="current-score" class="highlight">0</span></div>
+                <div>Vidas: <span id="current-lives" class="highlight">3</span></div>
+            </div>
+            
+            <div class="question-container">
+                <h2 id="question-text">¿Cuál es la capital de Francia?</h2>
+            </div>
+            
+            <div class="timer" id="timer">30</div>
+            
+            <div class="answers-container">
+                <button class="answer-btn" data-correct="false">Londres</button>
+                <button class="answer-btn" data-correct="false">Berlín</button>
+                <button class="answer-btn" data-correct="true">París</button>
+                <button class="answer-btn" data-correct="false">Madrid</button>
+            </div>
+            
+            <div class="lives-container">
+                <span class="life">❤️</span>
+                <span class="life">❤️</span>
+                <span class="life">❤️</span>
+            </div>
+        </div>
+        
+        <!-- Pantalla de puntuaciones -->
+        <div id="scores-screen" class="screen">
+            <h2>Puntuaciones Finales</h2>
+            
+            <div class="ranking-tabs">
+                <div class="tab active" data-tab="players">Ranking Individual</div>
+                <div class="tab" data-tab="teams">Ranking por Equipos</div>
+            </div>
+            
+            <div id="players-ranking" class="ranking-content active">
+                <div class="scoreboard" id="scoreboard">
+                    <!-- Los scores individuales se generarán dinámicamente -->
+                </div>
+            </div>
+            
+            <div id="teams-ranking" class="ranking-content">
+                <div class="scoreboard" id="teams-scoreboard">
+                    <!-- Los scores de equipos se generarán dinámicamente -->
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="play-again-btn" class="btn">Jugar de Nuevo</button>
+            </div>
+        </div>
+    </div>
 
-    // Función para reiniciar el juego
-    function reiniciarJuego() {
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.getElementById('intro').classList.add('active');
-    }
-  </script>
+    <script>
+        // Datos del juego - Preguntas
+        const questions = [
+            {
+                question: "¿Cuál es la capital de Francia?",
+                answers: [
+                    { text: "Londres", correct: false },
+                    { text: "Berlín", correct: false },
+                    { text: "París", correct: true },
+                    { text: "Madrid", correct: false }
+                ]
+            },
+            {
+                question: "¿En qué año llegó el hombre a la luna?",
+                answers: [
+                    { text: "1965", correct: false },
+                    { text: "1969", correct: true },
+                    { text: "1972", correct: false },
+                    { text: "1958", correct: false }
+                ]
+            },
+            {
+                question: "¿Cuál es el río más largo del mundo?",
+                answers: [
+                    { text: "Nilo", correct: true },
+                    { text: "Amazonas", correct: false },
+                    { text: "Misisipi", correct: false },
+                    { text: "Yangtsé", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué elemento químico tiene el símbolo 'Au'?",
+                answers: [
+                    { text: "Plata", correct: false },
+                    { text: "Arsénico", correct: false },
+                    { text: "Oro", correct: true },
+                    { text: "Aluminio", correct: false }
+                ]
+            },
+            {
+                question: "¿Quién pintó la Mona Lisa?",
+                answers: [
+                    { text: "Vincent van Gogh", correct: false },
+                    { text: "Pablo Picasso", correct: false },
+                    { text: "Leonardo da Vinci", correct: true },
+                    { text: "Michelangelo", correct: false }
+                ]
+            },
+            // NUEVAS PREGUNTAS A PARTIR DE AQUÍ
+            {
+                question: "¿Cuál es el metal líquido a temperatura ambiente?",
+                answers: [
+                    { text: "Mercurio", correct: true },
+                    { text: "Plomo", correct: false },
+                    { text: "Aluminio", correct: false },
+                    { text: "Cobre", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué superhéroe tiene el alter ego de Peter Parker?",
+                answers: [
+                    { text: "Iron Man", correct: false },
+                    { text: "Spider-Man", correct: true },
+                    { text: "Batman", correct: false },
+                    { text: "Superman", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué planeta es conocido como 'el planeta rojo'?",
+                answers: [
+                    { text: "Venus", correct: false },
+                    { text: "Júpiter", correct: false },
+                    { text: "Marte", correct: true },
+                    { text: "Saturno", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué banda británica fue liderada por Freddie Mercury?",
+                answers: [
+                    { text: "The Beatles", correct: false },
+                    { text: "Queen", correct: true },
+                    { text: "Rolling Stones", correct: false },
+                    { text: "Led Zeppelin", correct: false }
+                ]
+            },
+            {
+                question: "¿En qué año se estrenó la película 'Avengers: Endgame'?",
+                answers: [
+                    { text: "2018", correct: false },
+                    { text: "2019", correct: true },
+                    { text: "2020", correct: false },
+                    { text: "2017", correct: false }
+                ]
+            },
+            {
+                question: "¿Cuál es el océano más grande del mundo?",
+                answers: [
+                    { text: "Atlántico", correct: false },
+                    { text: "Índico", correct: false },
+                    { text: "Pacífico", correct: true },
+                    { text: "Ártico", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué metal es el principal componente del núcleo de la Tierra?",
+                answers: [
+                    { text: "Oro", correct: false },
+                    { text: "Hierro", correct: true },
+                    { text: "Plata", correct: false },
+                    { text: "Cobre", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué actor interpreta a Iron Man en el Universo Cinematográfico de Marvel?",
+                answers: [
+                    { text: "Chris Evans", correct: false },
+                    { text: "Chris Hemsworth", correct: false },
+                    { text: "Robert Downey Jr.", correct: true },
+                    { text: "Mark Ruffalo", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué cantante es conocida como 'La Reina del Pop'?",
+                answers: [
+                    { text: "Beyoncé", correct: false },
+                    { text: "Madonna", correct: true },
+                    { text: "Lady Gaga", correct: false },
+                    { text: "Rihanna", correct: false }
+                ]
+            },
+            {
+                question: "¿Cuál es el animal más grande del mundo?",
+                answers: [
+                    { text: "Elefante africano", correct: false },
+                    { text: "Ballena azul", correct: true },
+                    { text: "Tiburón ballena", correct: false },
+                    { text: "Jirafa", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué planeta tiene anillos visiblemente prominentes?",
+                answers: [
+                    { text: "Júpiter", correct: false },
+                    { text: "Saturno", correct: true },
+                    { text: "Urano", correct: false },
+                    { text: "Neptuno", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué superhéroe proviene del planeta Krypton?",
+                answers: [
+                    { text: "Batman", correct: false },
+                    { text: "Flash", correct: false },
+                    { text: "Superman", correct: true },
+                    { text: "Green Lantern", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué grupo musical lanzó el álbum 'The Dark Side of the Moon'?",
+                answers: [
+                    { text: "The Beatles", correct: false },
+                    { text: "Led Zeppelin", correct: false },
+                    { text: "Pink Floyd", correct: true },
+                    { text: "Queen", correct: false }
+                ]
+            },
+            {
+                question: "¿Cuál es el país más grande del mundo por área territorial?",
+                answers: [
+                    { text: "Canadá", correct: false },
+                    { text: "China", correct: false },
+                    { text: "Estados Unidos", correct: false },
+                    { text: "Rusia", correct: true }
+                ]
+            },
+            {
+                question: "¿Qué villano es el archienemigo de Spider-Man?",
+                answers: [
+                    { text: "Duende Verde", correct: true },
+                    { text: "Joker", correct: false },
+                    { text: "Lex Luthor", correct: false },
+                    { text: "Magneto", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué instrumento musical asocias con Louis Armstrong?",
+                answers: [
+                    { text: "Saxofón", correct: false },
+                    { text: "Piano", correct: false },
+                    { text: "Trompeta", correct: true },
+                    { text: "Batería", correct: false }
+                ]
+            },
+            {
+                question: "¿En qué continente se encuentra Egipto?",
+                answers: [
+                    { text: "Asia", correct: false },
+                    { text: "África", correct: true },
+                    { text: "Europa", correct: false },
+                    { text: "América", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué metal precioso tiene el símbolo químico 'Ag'?",
+                answers: [
+                    { text: "Oro", correct: false },
+                    { text: "Plata", correct: true },
+                    { text: "Platino", correct: false },
+                    { text: "Cobre", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué actor interpreta a Wolverine en las películas de X-Men?",
+                answers: [
+                    { text: "Hugh Jackman", correct: true },
+                    { text: "Ryan Reynolds", correct: false },
+                    { text: "Patrick Stewart", correct: false },
+                    { text: "Ian McKellen", correct: false }
+                ]
+            },
+            {
+                question: "¿Qué banda canadiense es conocida por éxitos como 'The Spirit of Radio'?",
+                answers: [
+                    { text: "Nickelback", correct: false },
+                    { text: "Rush", correct: true },
+                    { text: "Barenaked Ladies", correct: false },
+                    { text: "Arcade Fire", correct: false }
+                ]
+            }
+        ];
+
+        // Estado del juego
+        let players = [];
+        let currentPlayer = null;
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let lives = 3;
+        let timer;
+        let timeLeft = 30;
+        let lifeElements = [];
+
+        // Elementos del DOM
+        const screens = document.querySelectorAll('.screen');
+        const startBtn = document.getElementById('start-btn');
+        const joinBtn = document.getElementById('join-btn');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const playerNameInput = document.getElementById('player-name');
+        const playersList = document.getElementById('players-list');
+        const playersCount = document.getElementById('players-count');
+        const questionText = document.getElementById('question-text');
+        const answersContainer = document.querySelector('.answers-container');
+        const currentPlayerElement = document.getElementById('current-player');
+        const currentScoreElement = document.getElementById('current-score');
+        const currentLivesElement = document.getElementById('current-lives');
+        const timerElement = document.getElementById('timer');
+        const scoreboard = document.getElementById('scoreboard');
+        const teamsScoreboard = document.getElementById('teams-scoreboard');
+        const teamElements = document.querySelectorAll('.team');
+        const tabs = document.querySelectorAll('.tab');
+        const rankingContents = document.querySelectorAll('.ranking-content');
+
+        // Almacenamiento simple en localStorage para simular "servidor"
+        const GAME_CODE = "quizbattle-" + Math.floor(1000 + Math.random() * 9000);
+        
+        // Event Listeners
+        startBtn.addEventListener('click', () => showScreen('register-screen'));
+        joinBtn.addEventListener('click', registerPlayer);
+        startGameBtn.addEventListener('click', startGame);
+        playAgainBtn.addEventListener('click', () => window.location.reload());
+
+        // Tabs para ranking
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                
+                // Activar tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Mostrar contenido correspondiente
+                rankingContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `${tabId}-ranking`) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        // Inicializar el juego
+        function initGame() {
+            // Guardar código de juego en localStorage
+            localStorage.setItem('quiz-game-code', GAME_CODE);
+            console.log("Código del juego:", GAME_CODE);
+            
+            // Inicializar elementos de vida
+            lifeElements = document.querySelectorAll('.life');
+            
+            // Comenzar a sincronizar jugadores
+            setInterval(syncPlayers, 2000);
+        }
+
+        // Selección de equipo
+        teamElements.forEach(team => {
+            team.addEventListener('click', () => {
+                teamElements.forEach(t => t.classList.remove('selected'));
+                team.classList.add('selected');
+            });
+        });
+
+        // Registrar jugador
+        function registerPlayer() {
+            const name = playerNameInput.value.trim();
+            const selectedTeam = document.querySelector('.team.selected');
+            
+            if (!name) {
+                alert('Por favor ingresa tu nombre');
+                return;
+            }
+            
+            if (!selectedTeam) {
+                alert('Por favor selecciona un equipo');
+                return;
+            }
+            
+            currentPlayer = {
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+                name,
+                team: selectedTeam.dataset.team,
+                score: 0,
+                lives: 3,
+                connected: true
+            };
+            
+            // Guardar jugador en localStorage
+            savePlayer(currentPlayer);
+            
+            showScreen('waiting-screen');
+            updatePlayersList();
+        }
+
+        // Guardar jugador en el "servidor" (localStorage)
+        function savePlayer(player) {
+            let gameData = JSON.parse(localStorage.getItem(GAME_CODE) || '{"players": []}');
+            
+            // Verificar si el jugador ya existe
+            const existingPlayerIndex = gameData.players.findIndex(p => p.id === player.id);
+            
+            if (existingPlayerIndex >= 0) {
+                gameData.players[existingPlayerIndex] = player;
+            } else {
+                gameData.players.push(player);
+            }
+            
+            localStorage.setItem(GAME_CODE, JSON.stringify(gameData));
+        }
+
+        // Sincronizar jugadores desde el "servidor"
+        function syncPlayers() {
+            const gameData = JSON.parse(localStorage.getItem(GAME_CODE) || '{"players": []}');
+            players = gameData.players.filter(player => player.connected);
+            
+            updatePlayersList();
+            
+            // Si el juego ha comenzado (desde otro dispositivo)
+            const gameState = JSON.parse(localStorage.getItem(GAME_CODE + '-state') || '{"started": false}');
+            if (gameState.started && document.getElementById('waiting-screen').classList.contains('active')) {
+                startGame();
+            }
+        }
+
+        // Actualizar lista de jugadores
+        function updatePlayersList() {
+            playersList.innerHTML = '';
+            playersCount.textContent = players.length;
+            
+            players.forEach(player => {
+                const playerElement = document.createElement('div');
+                playerElement.classList.add('player-card', `team-${player.team}`);
+                playerElement.innerHTML = `
+                    <div><strong>${player.name}</strong></div>
+                    <div>Equipo ${player.team}</div>
+                `;
+                playersList.appendChild(playerElement);
+            });
+            
+            // Mostrar/ocultar botón de inicio según si es el primer jugador
+            if (players.length > 0 && players[0].id === currentPlayer.id) {
+                startGameBtn.style.display = 'block';
+            } else {
+                startGameBtn.style.display = 'none';
+            }
+        }
+
+        // Iniciar juego
+        function startGame() {
+            // Guardar estado de inicio en localStorage
+            localStorage.setItem(GAME_CODE + '-state', JSON.stringify({ started: true }));
+            
+            showScreen('game-screen');
+            loadQuestion();
+            startTimer();
+        }
+
+        // Cargar pregunta
+        function loadQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                endGame();
+                return;
+            }
+            
+            const question = questions[currentQuestionIndex];
+            questionText.textContent = question.question;
+            
+            answersContainer.innerHTML = '';
+            question.answers.forEach(answer => {
+                const button = document.createElement('button');
+                button.classList.add('answer-btn');
+                button.textContent = answer.text;
+                button.dataset.correct = answer.correct;
+                button.addEventListener('click', selectAnswer);
+                answersContainer.appendChild(button);
+            });
+            
+            currentPlayerElement.textContent = currentPlayer.name;
+            currentScoreElement.textContent = currentPlayer.score;
+            currentLivesElement.textContent = currentPlayer.lives;
+            
+            // Reiniciar temporizador
+            timeLeft = 30;
+            timerElement.textContent = timeLeft;
+        }
+
+        // Seleccionar respuesta
+        function selectAnswer(e) {
+            clearInterval(timer);
+            const selectedButton = e.target;
+            const correct = selectedButton.dataset.correct === 'true';
+            
+            if (correct) {
+                selectedButton.classList.add('correct');
+                currentPlayer.score += 10;
+                currentScoreElement.textContent = currentPlayer.score;
+            } else {
+                selectedButton.classList.add('incorrect');
+                currentPlayer.lives--;
+                currentLivesElement.textContent = currentPlayer.lives;
+                
+                // Efecto de perder vida
+                loseLife();
+                
+                // Mostrar la respuesta correcta
+                document.querySelectorAll('.answer-btn').forEach(button => {
+                    if (button.dataset.correct === 'true') {
+                        button.classList.add('correct');
+                    }
+                });
+                
+                if (currentPlayer.lives <= 0) {
+                    setTimeout(() => {
+                        endGame();
+                    }, 1500);
+                    return;
+                }
+            }
+            
+            // Guardar puntuación actualizada
+            savePlayer(currentPlayer);
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+                startTimer();
+            }, 1500);
+        }
+
+        // Efecto al perder una vida
+        function loseLife() {
+            const remainingLives = currentPlayer.lives;
+            if (lifeElements.length > remainingLives) {
+                const lifeToLose = lifeElements[remainingLives];
+                lifeToLose.classList.add('lost');
+                
+                // Después de la animación, ocultar permanentemente
+                setTimeout(() => {
+                    lifeToLose.style.display = 'none';
+                }, 500);
+            }
+        }
+
+        // Iniciar temporizador
+        function startTimer() {
+            clearInterval(timer);
+            timeLeft = 30;
+            timerElement.textContent = timeLeft;
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    currentPlayer.lives--;
+                    currentLivesElement.textContent = currentPlayer.lives;
+                    
+                    // Efecto de perder vida
+                    loseLife();
+                    
+                    if (currentPlayer.lives <= 0) {
+                        endGame();
+                    } else {
+                        currentQuestionIndex++;
+                        loadQuestion();
+                        startTimer();
+                    }
+                }
+            }, 1000);
+        }
+
+        // Finalizar juego
+        function endGame() {
+            // Obtener todos los jugadores actualizados
+            const gameData = JSON.parse(localStorage.getItem(GAME_CODE) || '{"players": []}');
+            players = gameData.players;
+            
+            showScreen('scores-screen');
+            
+            // Calcular puntuaciones por equipos usando promedios
+            const teamScores = {
+                red: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🔴" },
+                blue: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🔵" },
+                green: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🟢" },
+                yellow: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🟡" }
+            };
+            
+            // Ordenar jugadores por puntuación y calcular puntuación de equipos
+            players.sort((a, b) => b.score - a.score);
+            
+            // Calcular totales y contar jugadores por equipo
+            players.forEach(player => {
+                if (teamScores[player.team]) {
+                    teamScores[player.team].totalScore += player.score;
+                    teamScores[player.team].playerCount++;
+                    teamScores[player.team].players.push(player);
+                }
+            });
+            
+            // Calcular promedios
+            for (const team in teamScores) {
+                if (teamScores[team].playerCount > 0) {
+                    teamScores[team].average = Math.round(teamScores[team].totalScore / teamScores[team].playerCount);
+                }
+            }
+            
+            // Convertir a array y ordenar equipos por promedio (no por suma)
+            const sortedTeams = Object.entries(teamScores)
+                .map(([name, data]) => ({ name, ...data }))
+                .sort((a, b) => b.average - a.average);
+            
+            // Generar tabla de puntuaciones individuales
+            scoreboard.innerHTML = '';
+            players.forEach((player, index) => {
+                const playerElement = document.createElement('div');
+                playerElement.classList.add('player-score');
+                if (player.id === currentPlayer.id) {
+                    playerElement.classList.add('highlight');
+                }
+                playerElement.innerHTML = `
+                    <span>${index + 1}. ${player.name} <small>(Equipo ${player.team})</small></span>
+                    <span>${player.score} puntos</span>
+                `;
+                scoreboard.appendChild(playerElement);
+            });
+            
+            // Generar tabla de puntuaciones por equipos (usando promedios)
+            teamsScoreboard.innerHTML = '';
+            sortedTeams.forEach((team, index) => {
+                const teamElement = document.createElement('div');
+                teamElement.classList.add('team-score', `team-${team.name}-bg`);
+                teamElement.innerHTML = `
+                    <div>
+                        <span class="team-icon">${team.icon}</span>
+                        <span>Equipo ${team.name}</span>
+                        <div class="team-stats">Promedio: ${team.average} pts (${team.playerCount} jugadores)</div>
+                    </div>
+                    <div><strong>${team.average}</strong> pts promedio</div>
+                `;
+                teamsScoreboard.appendChild(teamElement);
+                
+                // Agregar jugadores del equipo
+                team.players.sort((a, b) => b.score - a.score).forEach(player => {
+                    const playerElement = document.createElement('div');
+                    playerElement.classList.add('player-score');
+                    playerElement.innerHTML = `
+                        <span>${player.name}</span>
+                        <span>${player.score} puntos</span>
+                    `;
+                    teamsScoreboard.appendChild(playerElement);
+                });
+            });
+        }
+
+        // Mostrar pantalla específica
+        function showScreen(screenId) {
+            screens.forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Iniciar el juego cuando se carga la página
+        window.addEventListener('load', initGame);
+    </script>
 </body>
 </html>
