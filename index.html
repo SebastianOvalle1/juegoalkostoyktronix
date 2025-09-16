@@ -355,7 +355,29 @@
             opacity: 0.8;
             margin-top: 5px;
         }
+        
+        .admin-controls {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .game-code {
+            font-size: 1.2rem;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: inline-block;
+        }
     </style>
+    
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -367,12 +389,24 @@
             <p>Responde preguntas, acumula puntos y compite con tus colegas.</p>
             <div style="text-align: center; margin-top: 30px;">
                 <button id="start-btn" class="btn">Comenzar Juego</button>
+                <button id="join-existing-btn" class="btn btn-secondary">Unirse a Juego Existente</button>
+            </div>
+        </div>
+        
+        <!-- Pantalla de unirse a juego existente -->
+        <div id="join-existing-screen" class="screen">
+            <h2>Unirse a juego existente</h2>
+            <input type="text" id="game-code-input" class="input-field" placeholder="Ingresa el código del juego">
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="join-with-code-btn" class="btn">Unirse</button>
+                <button id="back-to-welcome-btn" class="btn btn-secondary">Volver</button>
             </div>
         </div>
         
         <!-- Pantalla de registro -->
         <div id="register-screen" class="screen">
             <h2>Únete a la batalla</h2>
+            <div class="game-code" id="display-game-code">Código: Cargando...</div>
             <input type="text" id="player-name" class="input-field" placeholder="Ingresa tu nombre">
             <h3>Elige tu equipo:</h3>
             <div class="team-container">
@@ -405,11 +439,12 @@
         <!-- Pantalla de espera -->
         <div id="waiting-screen" class="screen">
             <h2>Esperando a que comience el juego...</h2>
+            <div class="game-code" id="waiting-game-code">Código: Cargando...</div>
             <p>Jugadores conectados: <span id="players-count">0</span></p>
             <div class="players-grid" id="players-list">
                 <!-- Jugadores en tiempo real -->
             </div>
-            <div style="text-align: center; margin-top: 20px;">
+            <div class="admin-controls" id="admin-controls" style="display: none;">
                 <button id="start-game-btn" class="btn">Iniciar Juego</button>
             </div>
         </div>
@@ -470,6 +505,21 @@
     </div>
 
     <script>
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAGsZqn6nUwUSf64qJt0pBoqhFtsvaKFkI",
+            authDomain: "yo-puedo-90d4b.firebaseapp.com",
+            projectId: "yo-puedo-90d4b",
+            storageBucket: "yo-puedo-90d4b.firebasestorage.app",
+            messagingSenderId: "82041954135",
+            appId: "1:82041954135:web:66390b305289ee78cca812",
+            measurementId: "G-8YVDR17Y2M"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         // Datos del juego - Preguntas
         const questions = [
             {
@@ -709,6 +759,12 @@
         let timer;
         let timeLeft = 30;
         let lifeElements = [];
+        let gameId = null;
+        let gameRef = null;
+        let playersRef = null;
+        let unsubscribePlayers = null;
+        let unsubscribeGame = null;
+        let isHost = false;
 
         // Elementos del DOM
         const screens = document.querySelectorAll('.screen');
@@ -730,15 +786,23 @@
         const teamElements = document.querySelectorAll('.team');
         const tabs = document.querySelectorAll('.tab');
         const rankingContents = document.querySelectorAll('.ranking-content');
+        const joinExistingBtn = document.getElementById('join-existing-btn');
+        const joinExistingScreen = document.getElementById('join-existing-screen');
+        const gameCodeInput = document.getElementById('game-code-input');
+        const joinWithCodeBtn = document.getElementById('join-with-code-btn');
+        const backToWelcomeBtn = document.getElementById('back-to-welcome-btn');
+        const displayGameCode = document.getElementById('display-game-code');
+        const waitingGameCode = document.getElementById('waiting-game-code');
+        const adminControls = document.getElementById('admin-controls');
 
-        // Almacenamiento simple en localStorage para simular "servidor"
-        const GAME_CODE = "quizbattle-" + Math.floor(1000 + Math.random() * 9000);
-        
         // Event Listeners
-        startBtn.addEventListener('click', () => showScreen('register-screen'));
+        startBtn.addEventListener('click', createNewGame);
+        joinExistingBtn.addEventListener('click', () => showScreen('join-existing-screen'));
         joinBtn.addEventListener('click', registerPlayer);
         startGameBtn.addEventListener('click', startGame);
         playAgainBtn.addEventListener('click', () => window.location.reload());
+        joinWithCodeBtn.addEventListener('click', joinExistingGame);
+        backToWelcomeBtn.addEventListener('click', () => showScreen('welcome-screen'));
 
         // Tabs para ranking
         tabs.forEach(tab => {
@@ -761,15 +825,8 @@
 
         // Inicializar el juego
         function initGame() {
-            // Guardar código de juego en localStorage
-            localStorage.setItem('quiz-game-code', GAME_CODE);
-            console.log("Código del juego:", GAME_CODE);
-            
             // Inicializar elementos de vida
             lifeElements = document.querySelectorAll('.life');
-            
-            // Comenzar a sincronizar jugadores
-            setInterval(syncPlayers, 2000);
         }
 
         // Selección de equipo
@@ -779,6 +836,81 @@
                 team.classList.add('selected');
             });
         });
+
+        // Crear un nuevo juego
+        function createNewGame() {
+            // Generar ID único para el juego
+            gameId = "quiz-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+            
+            // Crear documento del juego en Firestore
+            gameRef = db.collection('games').doc(gameId);
+            playersRef = db.collection('games').doc(gameId).collection('players');
+            
+            gameRef.set({
+                status: 'waiting',
+                currentQuestion: 0,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                startedAt: null,
+                finishedAt: null
+            }).then(() => {
+                isHost = true;
+                displayGameCode.textContent = `Código: ${gameId}`;
+                showScreen('register-screen');
+                
+                // Escuchar cambios en el estado del juego
+                unsubscribeGame = gameRef.onSnapshot((doc) => {
+                    const gameData = doc.data();
+                    if (gameData.status === 'playing' && document.getElementById('waiting-screen').classList.contains('active')) {
+                        startGame();
+                    }
+                });
+            }).catch((error) => {
+                console.error("Error creating game: ", error);
+                alert("Error al crear el juego. Intenta nuevamente.");
+            });
+        }
+
+        // Unirse a un juego existente
+        function joinExistingGame() {
+            const code = gameCodeInput.value.trim().toUpperCase();
+            
+            if (!code) {
+                alert('Por favor ingresa un código de juego');
+                return;
+            }
+            
+            // Verificar si el juego existe
+            gameId = code;
+            gameRef = db.collection('games').doc(gameId);
+            playersRef = db.collection('games').doc(gameId).collection('players');
+            
+            gameRef.get().then((doc) => {
+                if (doc.exists) {
+                    const gameData = doc.data();
+                    if (gameData.status === 'finished') {
+                        alert('Este juego ya ha finalizado');
+                        return;
+                    }
+                    
+                    isHost = false;
+                    displayGameCode.textContent = `Código: ${gameId}`;
+                    showScreen('register-screen');
+                    
+                    // Escuchar cambios en el estado del juego
+                    unsubscribeGame = gameRef.onSnapshot((doc) => {
+                        const gameData = doc.data();
+                        if (gameData.status === 'playing' && document.getElementById('waiting-screen').classList.contains('active')) {
+                            startGame();
+                        }
+                    });
+                } else {
+                    alert('Código de juego inválido');
+                }
+            }).catch((error) => {
+                console.error("Error joining game: ", error);
+                alert("Error al unirse al juego. Intenta nuevamente.");
+            });
+        }
 
         // Registrar jugador
         function registerPlayer() {
@@ -795,50 +927,38 @@
                 return;
             }
             
+            const playerId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+            
             currentPlayer = {
-                id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+                id: playerId,
                 name,
                 team: selectedTeam.dataset.team,
                 score: 0,
                 lives: 3,
-                connected: true
+                connected: true,
+                isHost: isHost
             };
             
-            // Guardar jugador en localStorage
-            savePlayer(currentPlayer);
-            
-            showScreen('waiting-screen');
-            updatePlayersList();
-        }
-
-        // Guardar jugador en el "servidor" (localStorage)
-        function savePlayer(player) {
-            let gameData = JSON.parse(localStorage.getItem(GAME_CODE) || '{"players": []}');
-            
-            // Verificar si el jugador ya existe
-            const existingPlayerIndex = gameData.players.findIndex(p => p.id === player.id);
-            
-            if (existingPlayerIndex >= 0) {
-                gameData.players[existingPlayerIndex] = player;
-            } else {
-                gameData.players.push(player);
-            }
-            
-            localStorage.setItem(GAME_CODE, JSON.stringify(gameData));
-        }
-
-        // Sincronizar jugadores desde el "servidor"
-        function syncPlayers() {
-            const gameData = JSON.parse(localStorage.getItem(GAME_CODE) || '{"players": []}');
-            players = gameData.players.filter(player => player.connected);
-            
-            updatePlayersList();
-            
-            // Si el juego ha comenzado (desde otro dispositivo)
-            const gameState = JSON.parse(localStorage.getItem(GAME_CODE + '-state') || '{"started": false}');
-            if (gameState.started && document.getElementById('waiting-screen').classList.contains('active')) {
-                startGame();
-            }
+            // Guardar jugador en Firestore
+            playersRef.doc(playerId).set(currentPlayer)
+                .then(() => {
+                    // Escuchar cambios en la lista de jugadores
+                    unsubscribePlayers = playersRef.onSnapshot((snapshot) => {
+                        players = [];
+                        snapshot.forEach((doc) => {
+                            players.push(doc.data());
+                        });
+                        
+                        updatePlayersList();
+                    });
+                    
+                    waitingGameCode.textContent = `Código: ${gameId}`;
+                    showScreen('waiting-screen');
+                })
+                .catch((error) => {
+                    console.error("Error adding player: ", error);
+                    alert("Error al unirse al juego. Intenta nuevamente.");
+                });
         }
 
         // Actualizar lista de jugadores
@@ -856,51 +976,62 @@
                 playersList.appendChild(playerElement);
             });
             
-            // Mostrar/ocultar botón de inicio según si es el primer jugador
-            if (players.length > 0 && players[0].id === currentPlayer.id) {
-                startGameBtn.style.display = 'block';
+            // Mostrar controles de administrador si es el host
+            if (isHost) {
+                adminControls.style.display = 'block';
             } else {
-                startGameBtn.style.display = 'none';
+                adminControls.style.display = 'none';
             }
         }
 
         // Iniciar juego
         function startGame() {
-            // Guardar estado de inicio en localStorage
-            localStorage.setItem(GAME_CODE + '-state', JSON.stringify({ started: true }));
-            
-            showScreen('game-screen');
-            loadQuestion();
-            startTimer();
+            // Actualizar estado del juego en Firestore
+            gameRef.update({
+                status: 'playing',
+                startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                currentQuestion: 0
+            }).then(() => {
+                showScreen('game-screen');
+                loadQuestion();
+                startTimer();
+            }).catch((error) => {
+                console.error("Error starting game: ", error);
+            });
         }
 
         // Cargar pregunta
         function loadQuestion() {
-            if (currentQuestionIndex >= questions.length) {
-                endGame();
-                return;
-            }
-            
-            const question = questions[currentQuestionIndex];
-            questionText.textContent = question.question;
-            
-            answersContainer.innerHTML = '';
-            question.answers.forEach(answer => {
-                const button = document.createElement('button');
-                button.classList.add('answer-btn');
-                button.textContent = answer.text;
-                button.dataset.correct = answer.correct;
-                button.addEventListener('click', selectAnswer);
-                answersContainer.appendChild(button);
+            gameRef.get().then((doc) => {
+                const gameData = doc.data();
+                currentQuestionIndex = gameData.currentQuestion;
+                
+                if (currentQuestionIndex >= questions.length) {
+                    endGame();
+                    return;
+                }
+                
+                const question = questions[currentQuestionIndex];
+                questionText.textContent = question.question;
+                
+                answersContainer.innerHTML = '';
+                question.answers.forEach(answer => {
+                    const button = document.createElement('button');
+                    button.classList.add('answer-btn');
+                    button.textContent = answer.text;
+                    button.dataset.correct = answer.correct;
+                    button.addEventListener('click', selectAnswer);
+                    answersContainer.appendChild(button);
+                });
+                
+                currentPlayerElement.textContent = currentPlayer.name;
+                currentScoreElement.textContent = currentPlayer.score;
+                currentLivesElement.textContent = currentPlayer.lives;
+                
+                // Reiniciar temporizador
+                timeLeft = 30;
+                timerElement.textContent = timeLeft;
             });
-            
-            currentPlayerElement.textContent = currentPlayer.name;
-            currentScoreElement.textContent = currentPlayer.score;
-            currentLivesElement.textContent = currentPlayer.lives;
-            
-            // Reiniciar temporizador
-            timeLeft = 30;
-            timerElement.textContent = timeLeft;
         }
 
         // Seleccionar respuesta
@@ -930,20 +1061,29 @@
                 
                 if (currentPlayer.lives <= 0) {
                     setTimeout(() => {
-                        endGame();
+                        endGameForPlayer();
                     }, 1500);
                     return;
                 }
             }
             
-            // Guardar puntuación actualizada
-            savePlayer(currentPlayer);
-            
-            setTimeout(() => {
-                currentQuestionIndex++;
-                loadQuestion();
-                startTimer();
-            }, 1500);
+            // Actualizar jugador en Firestore
+            playersRef.doc(currentPlayer.id).update({
+                score: currentPlayer.score,
+                lives: currentPlayer.lives
+            }).then(() => {
+                setTimeout(() => {
+                    // Avanzar a la siguiente pregunta (solo el host controla esto)
+                    if (isHost) {
+                        gameRef.update({
+                            currentQuestion: currentQuestionIndex + 1
+                        }).then(() => {
+                            loadQuestion();
+                            startTimer();
+                        });
+                    }
+                }, 1500);
+            });
         }
 
         // Efecto al perder una vida
@@ -958,6 +1098,12 @@
                     lifeToLose.style.display = 'none';
                 }, 500);
             }
+        }
+
+        // Finalizar juego para un jugador
+        function endGameForPlayer() {
+            showScreen('scores-screen');
+            calculateScores();
         }
 
         // Iniciar temporizador
@@ -978,96 +1124,123 @@
                     // Efecto de perder vida
                     loseLife();
                     
-                    if (currentPlayer.lives <= 0) {
-                        endGame();
-                    } else {
-                        currentQuestionIndex++;
-                        loadQuestion();
-                        startTimer();
-                    }
+                    // Actualizar jugador en Firestore
+                    playersRef.doc(currentPlayer.id).update({
+                        lives: currentPlayer.lives
+                    }).then(() => {
+                        if (currentPlayer.lives <= 0) {
+                            endGameForPlayer();
+                        } else if (isHost) {
+                            // Avanzar a la siguiente pregunta
+                            gameRef.update({
+                                currentQuestion: currentQuestionIndex + 1
+                            }).then(() => {
+                                loadQuestion();
+                                startTimer();
+                            });
+                        }
+                    });
                 }
             }, 1000);
         }
 
         // Finalizar juego
         function endGame() {
-            // Obtener todos los jugadores actualizados
-            const gameData = JSON.parse(localStorage.getItem(GAME_CODE) || '{"players": []}');
-            players = gameData.players;
-            
-            showScreen('scores-screen');
-            
-            // Calcular puntuaciones por equipos usando promedios
-            const teamScores = {
-                red: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🔴" },
-                blue: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🔵" },
-                green: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🟢" },
-                yellow: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🟡" }
-            };
-            
-            // Ordenar jugadores por puntuación y calcular puntuación de equipos
-            players.sort((a, b) => b.score - a.score);
-            
-            // Calcular totales y contar jugadores por equipo
-            players.forEach(player => {
-                if (teamScores[player.team]) {
-                    teamScores[player.team].totalScore += player.score;
-                    teamScores[player.team].playerCount++;
-                    teamScores[player.team].players.push(player);
-                }
-            });
-            
-            // Calcular promedios
-            for (const team in teamScores) {
-                if (teamScores[team].playerCount > 0) {
-                    teamScores[team].average = Math.round(teamScores[team].totalScore / teamScores[team].playerCount);
-                }
+            if (isHost) {
+                // Actualizar estado del juego en Firestore
+                gameRef.update({
+                    status: 'finished',
+                    finishedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    showScreen('scores-screen');
+                    calculateScores();
+                });
+            } else {
+                showScreen('scores-screen');
+                calculateScores();
             }
-            
-            // Convertir a array y ordenar equipos por promedio (no por suma)
-            const sortedTeams = Object.entries(teamScores)
-                .map(([name, data]) => ({ name, ...data }))
-                .sort((a, b) => b.average - a.average);
-            
-            // Generar tabla de puntuaciones individuales
-            scoreboard.innerHTML = '';
-            players.forEach((player, index) => {
-                const playerElement = document.createElement('div');
-                playerElement.classList.add('player-score');
-                if (player.id === currentPlayer.id) {
-                    playerElement.classList.add('highlight');
-                }
-                playerElement.innerHTML = `
-                    <span>${index + 1}. ${player.name} <small>(Equipo ${player.team})</small></span>
-                    <span>${player.score} puntos</span>
-                `;
-                scoreboard.appendChild(playerElement);
-            });
-            
-            // Generar tabla de puntuaciones por equipos (usando promedios)
-            teamsScoreboard.innerHTML = '';
-            sortedTeams.forEach((team, index) => {
-                const teamElement = document.createElement('div');
-                teamElement.classList.add('team-score', `team-${team.name}-bg`);
-                teamElement.innerHTML = `
-                    <div>
-                        <span class="team-icon">${team.icon}</span>
-                        <span>Equipo ${team.name}</span>
-                        <div class="team-stats">Promedio: ${team.average} pts (${team.playerCount} jugadores)</div>
-                    </div>
-                    <div><strong>${team.average}</strong> pts promedio</div>
-                `;
-                teamsScoreboard.appendChild(teamElement);
+        }
+
+        // Calcular puntuaciones
+        function calculateScores() {
+            playersRef.get().then((snapshot) => {
+                const allPlayers = [];
+                snapshot.forEach((doc) => {
+                    allPlayers.push(doc.data());
+                });
                 
-                // Agregar jugadores del equipo
-                team.players.sort((a, b) => b.score - a.score).forEach(player => {
+                // Calcular puntuaciones por equipos usando promedios
+                const teamScores = {
+                    red: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🔴" },
+                    blue: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🔵" },
+                    green: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🟢" },
+                    yellow: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🟡" }
+                };
+                
+                // Ordenar jugadores por puntuación y calcular puntuación de equipos
+                allPlayers.sort((a, b) => b.score - a.score);
+                
+                // Calcular totales y contar jugadores por equipo
+                allPlayers.forEach(player => {
+                    if (teamScores[player.team]) {
+                        teamScores[player.team].totalScore += player.score;
+                        teamScores[player.team].playerCount++;
+                        teamScores[player.team].players.push(player);
+                    }
+                });
+                
+                // Calcular promedios
+                for (const team in teamScores) {
+                    if (teamScores[team].playerCount > 0) {
+                        teamScores[team].average = Math.round(teamScores[team].totalScore / teamScores[team].playerCount);
+                    }
+                }
+                
+                // Convertir a array y ordenar equipos por promedio (no por suma)
+                const sortedTeams = Object.entries(teamScores)
+                    .map(([name, data]) => ({ name, ...data }))
+                    .sort((a, b) => b.average - a.average);
+                
+                // Generar tabla de puntuaciones individuales
+                scoreboard.innerHTML = '';
+                allPlayers.forEach((player, index) => {
                     const playerElement = document.createElement('div');
                     playerElement.classList.add('player-score');
+                    if (player.id === currentPlayer.id) {
+                        playerElement.classList.add('highlight');
+                    }
                     playerElement.innerHTML = `
-                        <span>${player.name}</span>
+                        <span>${index + 1}. ${player.name} <small>(Equipo ${player.team})</small></span>
                         <span>${player.score} puntos</span>
                     `;
-                    teamsScoreboard.appendChild(playerElement);
+                    scoreboard.appendChild(playerElement);
+                });
+                
+                // Generar tabla de puntuaciones por equipos (usando promedios)
+                teamsScoreboard.innerHTML = '';
+                sortedTeams.forEach((team, index) => {
+                    const teamElement = document.createElement('div');
+                    teamElement.classList.add('team-score', `team-${team.name}-bg`);
+                    teamElement.innerHTML = `
+                        <div>
+                            <span class="team-icon">${team.icon}</span>
+                            <span>Equipo ${team.name}</span>
+                            <div class="team-stats">Promedio: ${team.average} pts (${team.playerCount} jugadores)</div>
+                        </div>
+                        <div><strong>${team.average}</strong> pts promedio</div>
+                    `;
+                    teamsScoreboard.appendChild(teamElement);
+                    
+                    // Agregar jugadores del equipo
+                    team.players.sort((a, b) => b.score - a.score).forEach(player => {
+                        const playerElement = document.createElement('div');
+                        playerElement.classList.add('player-score');
+                        playerElement.innerHTML = `
+                            <span>${player.name}</span>
+                            <span>${player.score} puntos</span>
+                        `;
+                        teamsScoreboard.appendChild(playerElement);
+                    });
                 });
             });
         }
@@ -1079,6 +1252,19 @@
             });
             document.getElementById(screenId).classList.add('active');
         }
+
+        // Limpiar suscripciones al cerrar la página
+        window.addEventListener('beforeunload', () => {
+            if (unsubscribePlayers) unsubscribePlayers();
+            if (unsubscribeGame) unsubscribeGame();
+            
+            // Marcar jugador como desconectado
+            if (currentPlayer && playersRef) {
+                playersRef.doc(currentPlayer.id).update({
+                    connected: false
+                });
+            }
+        });
 
         // Iniciar el juego cuando se carga la página
         window.addEventListener('load', initGame);
