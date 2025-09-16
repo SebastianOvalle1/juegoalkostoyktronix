@@ -839,36 +839,36 @@
 
         // Crear un nuevo juego
         function createNewGame() {
-            // Generar ID único para el juego
-            gameId = "quiz-" + Math.random().toString(36).substring(2, 10).toUpperCase();
-            
-            // Crear documento del juego en Firestore
-            gameRef = db.collection('games').doc(gameId);
-            playersRef = db.collection('games').doc(gameId).collection('players');
-            
-            gameRef.set({
-                status: 'waiting',
-                currentQuestion: 0,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                startedAt: null,
-                finishedAt: null
-            }).then(() => {
-                isHost = true;
-                displayGameCode.textContent = `Código: ${gameId}`;
-                showScreen('register-screen');
-                
-                // Escuchar cambios en el estado del juego
-                unsubscribeGame = gameRef.onSnapshot((doc) => {
-                    const gameData = doc.data();
-                    if (gameData.status === 'playing' && document.getElementById('waiting-screen').classList.contains('active')) {
-                        startGame();
-                    }
-                });
-            }).catch((error) => {
-                console.error("Error creating game: ", error);
-                alert("Error al crear el juego. Intenta nuevamente.");
-            });
-        }
+    // Generar ID único para el juego
+    gameId = "quiz-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+    
+    // Crear documento del juego en Firestore
+    gameRef = db.collection('games').doc(gameId);
+    playersRef = db.collection('games').doc(gameId).collection('players');
+    
+    gameRef.set({
+        status: 'waiting',
+        currentQuestion: 0,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp, // CORREGIDO
+        startedAt: null,
+        finishedAt: null
+    }).then(() => {
+        isHost = true;
+        displayGameCode.textContent = `Código: ${gameId}`;
+        showScreen('register-screen');
+        
+        // Escuchar cambios en el estado del juego
+        unsubscribeGame = gameRef.onSnapshot((doc) => {
+            const gameData = doc.data();
+            if (gameData.status === 'playing' && document.getElementById('waiting-screen').classList.contains('active')) {
+                startGame();
+            }
+        });
+    }).catch((error) => {
+        console.error("Error creating game: ", error);
+        alert("Error al crear el juego. Intenta nuevamente.");
+    });
+}
 
         // Unirse a un juego existente
         function joinExistingGame() {
