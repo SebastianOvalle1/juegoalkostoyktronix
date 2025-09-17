@@ -805,90 +805,89 @@
             }
         }
 
-        // Inicializar el juego
-        async function initGame() {
-            hideError();
-            
-            if (!await checkConnection()) {
-                return;
-            }
+     // Inicializar el juego
+async function initGame() {
+    hideError();
+    
+    if (!await checkConnection()) {
+        return;
+    }
 
-            try {
-                // Inicializar elementos de vida
-                lifeElements = document.querySelectorAll('.life');
+    try {
+        // Inicializar elementos de vida
+        lifeElements = document.querySelectorAll('.life');
+        
+        // Crear o unirse a una partida existente
+        const existingGames = await pb.collection('games').getFullList({
+            filter: 'status = "waiting"',
+            sort: '-created'
+        });
+
+        if (existingGames.length > 0) {
+            gameId = existingGames[0].id;
+            // Obtener jugadores existentes inmediatamente
+            await updatePlayersList();
+        } else {
+            const game = await pb.collection('games').create({
+                code: Math.floor(1000 + Math.random() * 9000).toString(),
+                status: "waiting",
+                players_count: 0,
+                current_question: 0
+            });
+            gameId = game.id;
+        }
+        
+        // Suscribirse a cambios en tiempo real
+        await subscribeToRealtime();
+        
+        console.log("Juego inicializado con ID:", gameId);
+    } catch (error) {
+        showError(
+            "Error inicializando el juego", 
+            `Detalles: ${error.message || 'Error desconocido'}`
+        );
+    }
+}
+
+// Suscribirse a actualizaciones en tiempo real
+async function subscribeToRealtime() {
+    try {
+        // Cancelar suscripción existente si hay una
+        if (realtimeSubscription) {
+            realtimeSubscription.unsubscribe();
+        }
+        
+        // Suscribirse a cambios en el juego
+        realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
+            if (e.action === 'update') {
+                const gameData = e.record;
                 
-                // Crear o unirse a una partida existente
-                const existingGames = await pb.collection('games').getFullList({
-                    filter: 'status = "waiting"',
-                    sort: '-created' // Ordenar por más reciente
-                });
-
-                if (existingGames.length > 0) {
-                    gameId = existingGames[0].id;
-                    // Obtener jugadores existentes inmediatamente
-                    await updatePlayersList();
-                } else {
-                    const game = await pb.collection('games').create({
-                        code: Math.floor(1000 + Math.random() * 9000).toString(),
-                        status: "waiting",
-                        players_count: 0,
-                        current_question: 0
-                    });
-                    gameId = game.id;
+                // Actualizar contador de jugadores
+                playersCount.textContent = gameData.players_count;
+                
+                // Si el juego ha comenzado
+                if (gameData.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
+                    startGame();
                 }
                 
-                // Suscribirse a cambios en tiempo real
-                await subscribeToRealtime();
-                
-                console.log("Juego inicializado con ID:", gameId);
-            } catch (error) {
-                showError(
-                    "Error inicializando el juego", 
-                    `Detalles: ${error.message || 'Error desconocido'}`
-                );
+                // Si es el final del juego
+                if (gameData.status === "finished" && document.getElementById('game-screen').classList.contains('active')) {
+                    endGame();
+                }
             }
-        }
-
-        // Suscribirse a actualizaciones en tiempo real
-        async function subscribeToRealtime() {
-            if(realtimeSubscription){
-  realtimeSubscription.unsubscribe();
+        });
+        
+        // También suscribirse a cambios en jugadores
+        await pb.collection('players').subscribe('*', async (e) => {
+            // Verificar que el jugador pertenece a esta partida
+            if (e.record.game === gameId) {
+                await updatePlayersList();
+            }
+        });
+    } catch (error) {
+        console.error("Error en suscripción en tiempo real:", error);
+    }
 }
-subscribeToRealtime();
-            
-            try {
-                // Suscribirse a cambios en el juego
-                realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
-                    if (e.action === 'update') {
-                        const gameData = e.record;
-                        
-                        // Actualizar contador de jugadores
-                        playersCount.textContent = gameData.players_count;
-                        
-                        // Si el juego ha comenzado
-                        if (gameData.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
-                            startGame();
-                        }
-                        
-                        // Si es el final del juego
-                        if (gameData.status === "finished" && document.getElementById('game-screen').classList.contains('active')) {
-                            endGame();
-                        }
-                    }
-                });
-                
-                // También suscribirse a cambios en jugadores
-                await pb.collection('players').subscribe('*', async (e) => {
-                    // Verificar que el jugador pertenece a esta partida
-                    if (e.record.game === gameId) {
-                        await updatePlayersList();
-                    }
-                });
-            } catch (error) {
-                console.error("Error en suscripción en tiempo real:", error);
-            }
-        }
-
         // Selección de equipo
         teamElements.forEach(team => {
             team.addEventListener('click', () => {
@@ -952,148 +951,174 @@ subscribeToRealtime();
             }
         }
 
-        // Actualizar lista de jugadores
-        async function updatePlayersList() {
-            try {
-                const playersListData = await pb.collection('players').getFullList({
-                    filter: `game = "${gameId}" && connected = true`,
-                    sort: 'created' // Ordenar por fecha de creación para determinar el primer jugador
-                });
-                
-                players = playersListData;
-                playersCount.textContent = players.length;
-                
-                // Limpiar lista
-                const playersListElement = document.getElementById('players-list');
-                playersListElement.innerHTML = '';
-                
-                // Agregar jugadores
-                players.forEach(player => {
-                    const playerElement = document.createElement('div');
-                    playerElement.classList.add('player-card', `team-${player.team}`);
-                    playerElement.innerHTML = `
-                        <div><strong>${player.name}</strong></div>
-                        <div>Equipo ${player.team}</div>
-                    `;
-                    playersListElement.appendChild(playerElement);
-                });
-                
-                // Mostrar/ocultar botón de inicio - lógica corregida
-                if (players.length > 0 && currentPlayer) {
-                    // Verificar si el jugador actual es el primero en unirse
-                    // Comparar con el primer jugador de la lista ordenada por creación
-                    if (players[0].id === currentPlayer.id) {
-                        startGameBtn.style.display = 'block';
-                    } else {
-                        startGameBtn.style.display = 'none';
-                    }
-                } else {
-                    startGameBtn.style.display = 'none';
-                }
-            } catch (error) {
-                console.error("Error actualizando lista de jugadores:", error);
-            }
-        }
-
-        // Iniciar juego
-        async function startGame() {
-            try {
-                console.log("Iniciando juego...");
-                // Actualizar estado del juego
-                await pb.collection('games').update(gameId, {
-                    status: "started",
-                    started_at: new Date()
-                });
-                
-                showScreen('game-screen');
-                loadQuestion();
-                startTimer();
-            } catch (error) {
-                showError(
-                    "Error iniciando juego", 
-                    `No se pudo iniciar el juego: ${error.message || 'Error desconocido'}`
-                );
-            }
-        }
-
-        // Cargar pregunta
-        function loadQuestion() {
-            if (currentQuestionIndex >= questions.length) {
-                endGame();
-                return;
-            }
+       // Actualizar lista de jugadores
+async function updatePlayersList() {
+    try {
+        const playersListData = await pb.collection('players').getFullList({
+            filter: `game = "${gameId}" && connected = true`,
+            sort: 'created'
+        });
+        
+        players = playersListData;
+        playersCount.textContent = players.length;
+        
+        // Limpiar lista
+        const playersListElement = document.getElementById('players-list');
+        playersListElement.innerHTML = '';
+        
+        // Agregar jugadores
+        players.forEach(player => {
+            const playerElement = document.createElement('div');
+            playerElement.classList.add('player-card', `team-${player.team}`);
+            playerElement.innerHTML = `
+                <div><strong>${player.name}</strong></div>
+                <div>Equipo ${player.team}</div>
+            `;
+            playersListElement.appendChild(playerElement);
+        });
+        
+        // Mostrar/ocultar botón de inicio - lógica corregida
+        if (players.length > 0 && currentPlayer) {
+            // Verificar si el jugador actual es el primero en unirse
+            const sortedPlayers = [...players].sort((a, b) => new Date(a.created) - new Date(b.created));
+            const firstPlayer = sortedPlayers[0];
             
-            const question = questions[currentQuestionIndex];
-            questionText.textContent = question.question;
-            
-            answersContainer.innerHTML = '';
-            question.answers.forEach(answer => {
-                const button = document.createElement('button');
-                button.classList.add('answer-btn');
-                button.textContent = answer.text;
-                button.dataset.correct = answer.correct;
-                button.addEventListener('click', selectAnswer);
-                answersContainer.appendChild(button);
-            });
-            
-            currentPlayerElement.textContent = currentPlayer.name;
-            currentScoreElement.textContent = currentPlayer.score;
-            currentLivesElement.textContent = currentPlayer.lives;
-            
-            // Reiniciar temporizador
-            timeLeft = 30;
-            timerElement.textContent = timeLeft;
-        }
-
-        // Seleccionar respuesta
-        async function selectAnswer(e) {
-            clearInterval(timer);
-            const selectedButton = e.target;
-            const correct = selectedButton.dataset.correct === 'true';
-            
-            if (correct) {
-                selectedButton.classList.add('correct');
-                currentPlayer.score += 10;
-                currentScoreElement.textContent = currentPlayer.score;
+            if (firstPlayer.id === currentPlayer.id) {
+                startGameBtn.style.display = 'block';
             } else {
-                selectedButton.classList.add('incorrect');
-                currentPlayer.lives--;
-                currentLivesElement.textContent = currentPlayer.lives;
-                
-                // Efecto de perder vida
-                loseLife();
-                
-                // Mostrar la respuesta correcta
-                document.querySelectorAll('.answer-btn').forEach(button => {
-                    if (button.dataset.correct === 'true') {
-                        button.classList.add('correct');
-                    }
-                });
-                
-                if (currentPlayer.lives <= 0) {
-                    setTimeout(() => {
-                        endGame();
-                    }, 1500);
-                    return;
-                }
+                startGameBtn.style.display = 'none';
             }
-            
-            // Actualizar jugador en PocketBase
-            try {
-                await pb.collection('players').update(currentPlayer.id, {
-                    score: currentPlayer.score,
-                    lives: currentPlayer.lives
-                });
-            } catch (error) {
-                console.error("Error actualizando jugador:", error);
-            }
-            
-            setTimeout(() => {
-                currentQuestionIndex++;
-                loadQuestion();
-                startTimer();
-            }, 1500);
+        } else {
+            startGameBtn.style.display = 'none';
         }
+    } catch (error) {
+        console.error("Error actualizando lista de jugadores:", error);
+    }
+}
+
+ // Iniciar juego
+async function startGame() {
+    try {
+        console.log("Iniciando juego...");
+        
+        // Solo el primer jugador puede iniciar el juego
+        const sortedPlayers = [...players].sort((a, b) => new Date(a.created) - new Date(b.created));
+        const firstPlayer = sortedPlayers[0];
+        
+        if (currentPlayer && currentPlayer.id !== firstPlayer.id) {
+            console.log("Solo el primer jugador puede iniciar el juego");
+            return;
+        }
+        
+        // Actualizar estado del juego
+        await pb.collection('games').update(gameId, {
+            status: "started",
+            started_at: new Date(),
+            current_question: 0
+        });
+        
+        showScreen('game-screen');
+        loadQuestion();
+        startTimer();
+    } catch (error) {
+        showError(
+            "Error iniciando juego", 
+            `No se pudo iniciar el juego: ${error.message || 'Error desconocido'}`
+        );
+    }
+}
+
+  // Cargar pregunta
+async function loadQuestion() {
+    try {
+        // Obtener el estado actual del juego
+        const game = await pb.collection('games').getOne(gameId);
+        currentQuestionIndex = game.current_question || 0;
+        
+        if (currentQuestionIndex >= questions.length) {
+            endGame();
+            return;
+        }
+        
+        const question = questions[currentQuestionIndex];
+        questionText.textContent = question.question;
+        
+        answersContainer.innerHTML = '';
+        question.answers.forEach(answer => {
+            const button = document.createElement('button');
+            button.classList.add('answer-btn');
+            button.textContent = answer.text;
+            button.dataset.correct = answer.correct;
+            button.addEventListener('click', selectAnswer);
+            answersContainer.appendChild(button);
+        });
+        
+        currentPlayerElement.textContent = currentPlayer.name;
+        currentScoreElement.textContent = currentPlayer.score;
+        currentLivesElement.textContent = currentPlayer.lives;
+        
+        // Reiniciar temporizador
+        timeLeft = 30;
+        timerElement.textContent = timeLeft;
+    } catch (error) {
+        console.error("Error cargando pregunta:", error);
+    }
+}
+
+   // Seleccionar respuesta
+async function selectAnswer(e) {
+    clearInterval(timer);
+    const selectedButton = e.target;
+    const correct = selectedButton.dataset.correct === 'true';
+    
+    if (correct) {
+        selectedButton.classList.add('correct');
+        currentPlayer.score += 10;
+        currentScoreElement.textContent = currentPlayer.score;
+    } else {
+        selectedButton.classList.add('incorrect');
+        currentPlayer.lives--;
+        currentLivesElement.textContent = currentPlayer.lives;
+        
+        // Efecto de perder vida
+        loseLife();
+        
+        // Mostrar la respuesta correcta
+        document.querySelectorAll('.answer-btn').forEach(button => {
+            if (button.dataset.correct === 'true') {
+                button.classList.add('correct');
+            }
+        });
+        
+        if (currentPlayer.lives <= 0) {
+            setTimeout(() => {
+                endGame();
+            }, 1500);
+            return;
+        }
+    }
+    
+    // Actualizar jugador en PocketBase
+    try {
+        await pb.collection('players').update(currentPlayer.id, {
+            score: currentPlayer.score,
+            lives: currentPlayer.lives
+        });
+        
+        // Avanzar a la siguiente pregunta para todos
+        const nextQuestionIndex = currentQuestionIndex + 1;
+        await pb.collection('games').update(gameId, {
+            current_question: nextQuestionIndex
+        });
+        
+        setTimeout(() => {
+            loadQuestion();
+            startTimer();
+        }, 1500);
+    } catch (error) {
+        console.error("Error actualizando jugador:", error);
+    }
+}
 
         // Efecto al perder una vida
         function loseLife() {
