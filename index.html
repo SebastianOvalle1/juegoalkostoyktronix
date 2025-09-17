@@ -862,7 +862,7 @@ async function initGame() {
     }
 }
 
-// Suscribirse a actualizaciones en tiempo real
+// Suscribirse a cambios en tiempo real
 async function subscribeToRealtime() {
     try {
         // Cancelar suscripción existente si hay una
@@ -882,7 +882,7 @@ async function subscribeToRealtime() {
                 if (gameData.status === "started") {
                     // Si estamos en la pantalla de espera, cambiar a la pantalla de juego
                     if (document.getElementById('waiting-screen').classList.contains('active')) {
-                        startGame();
+                        startGameForAllPlayers(); // Nueva función
                     }
                 }
                 
@@ -1028,25 +1028,25 @@ async function updatePlayersList() {
         }
         
         // Si el juego ya comenzó pero este jugador aún está en la pantalla de espera
-        try {
-            const uniqueParam = new Date().getTime();
-            const game = await pb.collection('games').getOne(gameId, {
-                $autoCancel: false,
-                timestamp: uniqueParam
-            });
-            
-            if (game.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
-                startGame();
-            }
-        } catch (error) {
-            console.error("Error verificando estado del juego:", error);
-        }
+try {
+    const uniqueParam = new Date().getTime();
+    const game = await pb.collection('games').getOne(gameId, {
+        $autoCancel: false,
+        timestamp: uniqueParam
+    });
+    
+    if (game.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
+        startGameForAllPlayers(); // Cambiar a la nueva función
+    }
+} catch (error) {
+    console.error("Error verificando estado del juego:", error);
+}
     } catch (error) {
         console.error("Error actualizando lista de jugadores:", error);
     }
 }
 
-// Iniciar juego
+// Iniciar juego (solo para el primer jugador)
 async function startGame() {
     try {
         console.log("Iniciando juego para todos los jugadores...");
@@ -1066,7 +1066,23 @@ async function startGame() {
                 // Agregar un campo único para evitar autocancelación
                 unique_start: uniqueTimestamp
             });
+            
+            // El primer jugador también inicia su juego localmente
+            startGameForAllPlayers();
         }
+        // NOTA: Los demás jugadores iniciarán el juego a través de la suscripción en tiempo real
+    } catch (error) {
+        showError(
+            "Error iniciando juego", 
+            `No se pudo iniciar el juego: ${error.message || 'Error desconocido'}`
+        );
+    }
+}
+
+// Función para que todos los jugadores inicien el juego
+async function startGameForAllPlayers() {
+    try {
+        console.log("Iniciando juego para todos los jugadores...");
         
         // Todos los jugadores cargan la pantalla de juego
         showScreen('game-screen');
