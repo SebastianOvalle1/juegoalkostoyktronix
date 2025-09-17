@@ -360,6 +360,13 @@
 <body>
     <div class="container">
         <h1>🎯 Quiz Battle - Yo Puedo - Alkosto/Ktronix 🎯</h1>
+
+	<div id="error-message" class="error-message" style="display: none;">
+            <h3>Error de conexión</h3>
+            <p id="error-text">No se pudo conectar con el servidor.</p>
+            <div class="debug-info" id="debug-info"></div>
+            <button id="retry-btn" class="btn">Reintentar conexión</button>
+        </div>
         
         <!-- Pantalla de inicio -->
         <div id="welcome-screen" class="screen active">
@@ -474,9 +481,9 @@
     <script>
         // Configuración de PocketBase
         const POCKETBASE_URL = 'https://was-pink.pockethost.io/';
-        const pb = new PocketBase(POCKETBASE_URL);
+        let pb = new PocketBase(POCKETBASE_URL);
         
-        // Estado del juego (SOLO UNA DECLARACIÓN)
+        // Estado del juego
         let players = [];
         let currentPlayer = null;
         let currentQuestionIndex = 0;
@@ -487,6 +494,7 @@
         let lifeElements = [];
         let gameId = null;
         let realtimeSubscription = null;
+        let isOnline = true;
 
         // Elementos del DOM
         const screens = document.querySelectorAll('.screen');
@@ -508,6 +516,10 @@
         const teamElements = document.querySelectorAll('.team');
         const tabs = document.querySelectorAll('.tab');
         const rankingContents = document.querySelectorAll('.ranking-content');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const debugInfo = document.getElementById('debug-info');
+        const retryBtn = document.getElementById('retry-btn');
 
         // Preguntas
         const questions = [
@@ -608,6 +620,7 @@
         joinBtn.addEventListener('click', registerPlayer);
         startGameBtn.addEventListener('click', startGame);
         playAgainBtn.addEventListener('click', () => window.location.reload());
+        retryBtn.addEventListener('click', initGame);
 
         // Tabs para ranking
         tabs.forEach(tab => {
@@ -626,8 +639,44 @@
             });
         });
 
+        // Función para mostrar errores
+        function showError(message, details = '') {
+            console.error("Error:", message, details);
+            errorText.textContent = message;
+            debugInfo.textContent = details || 'No hay detalles adicionales';
+            errorMessage.style.display = 'block';
+            isOnline = false;
+        }
+
+        // Función para ocultar errores
+        function hideError() {
+            errorMessage.style.display = 'none';
+            isOnline = true;
+        }
+
+        // Verificar conexión
+        async function checkConnection() {
+            try {
+                // Intentar una solicitud simple a PocketBase
+                await pb.collection('users').getList(1, 1);
+                return true;
+            } catch (error) {
+                showError(
+                    "No se puede conectar con el servidor", 
+                    `Error: ${error.message || 'Desconocido'}`
+                );
+                return false;
+            }
+        }
+
         // Inicializar el juego
         async function initGame() {
+            hideError();
+            
+            if (!await checkConnection()) {
+                return;
+            }
+
             try {
                 // Inicializar elementos de vida
                 lifeElements = document.querySelectorAll('.life');
@@ -657,16 +706,17 @@
                 
                 console.log("Juego inicializado con ID:", gameId);
             } catch (error) {
-                console.error("Error inicializando el juego:", error);
-                alert("Error conectando al servidor. Recargando página...");
-                window.location.reload();
+                showError(
+                    "Error inicializando el juego", 
+                    `Detalles: ${error.message || 'Error desconocido'}`
+                );
             }
         }
 
         // Suscribirse a actualizaciones en tiempo real
         async function subscribeToRealtime() {
             if (realtimeSubscription) {
-                return; // Ya estamos suscritos
+                realtimeSubscription.unsubscribe();
             }
             
             try {
@@ -710,6 +760,11 @@
 
         // Registrar jugador
         async function registerPlayer() {
+            if (!isOnline) {
+                showError("No hay conexión", "Por favor, revisa tu conexión e intenta nuevamente.");
+                return;
+            }
+
             const name = playerNameInput.value.trim();
             const selectedTeam = document.querySelector('.team.selected');
             
@@ -746,8 +801,10 @@
                 showScreen('waiting-screen');
                 await updatePlayersList();
             } catch (error) {
-                console.error("Error registrando jugador:", error);
-                alert("Error al registrar jugador. Intenta nuevamente.");
+                showError(
+                    "Error registrando jugador", 
+                    `No se pudo crear el jugador: ${error.message || 'Error desconocido'}`
+                );
             }
         }
 
@@ -801,8 +858,10 @@
                 loadQuestion();
                 startTimer();
             } catch (error) {
-                console.error("Error iniciando juego:", error);
-                alert("Error al iniciar el juego. Intenta nuevamente.");
+                showError(
+                    "Error iniciando juego", 
+                    `No se pudo iniciar el juego: ${error.message || 'Error desconocido'}`
+                );
             }
         }
 
@@ -1050,6 +1109,20 @@
                 }
             }
         });
+
+        // Verificar conexión periódicamente
+        setInterval(async () => {
+            if (!isOnline) {
+                const connected = await checkConnection();
+                if (connected) {
+                    hideError();
+                    // Reconectar suscripciones si es necesario
+                    if (gameId) {
+                        subscribeToRealtime();
+                    }
+                }
+            }
+        }, 10000); // Verificar cada 10 segundos
     </script>
 </body>
 </html>
