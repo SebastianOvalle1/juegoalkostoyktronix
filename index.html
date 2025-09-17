@@ -483,7 +483,7 @@
 const POCKETBASE_URL = 'https://was-pink.pockethost.io/';
 let pb = new PocketBase(POCKETBASE_URL);
 
-// Desactivar autocancelación globalmente
+// DESACTIVAR AUTOCANCELACIÓN GLOBALMENTE - ESTO ES CLAVE
 pb.autoCancellation(false);
         
         // Estado del juego
@@ -867,32 +867,43 @@ async function subscribeToRealtime() {
     try {
         // Desuscribirse si ya hay una suscripción
         if (realtimeSubscription) {
-            try { realtimeSubscription.unsubscribe(); } catch(e){ /* ignore */ }
+            try { 
+                realtimeSubscription.unsubscribe(); 
+            } catch(e){ 
+                console.log("Error al desuscribirse (puede ignorarse):", e);
+            }
         }
 
         // Suscribirse a cambios en el juego específico
         realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
-            console.log("Evento de juego recibido:", e.action, e.record);
+            console.log("Evento de juego recibido:", e.action, "Estado:", e.record.status);
             
             if (e.action === 'update') {
                 const gameData = e.record;
                 
                 // Actualizar contador de jugadores
-                playersCount.textContent = gameData.players_count || 0;
+                if (gameData.players_count !== undefined) {
+                    playersCount.textContent = gameData.players_count;
+                }
                 
                 // Si el juego comenzó, todos los jugadores deben cambiar de pantalla
                 if (gameData.status === "started") {
-                    console.log("Juego iniciado - cambiando a pantalla de juego");
-                    startGameForAllPlayers();
+                    console.log("Juego iniciado detectado - cambiando a pantalla de juego");
+                    // Pequeño delay para asegurar que todo esté listo
+                    setTimeout(() => {
+                        startGameForAllPlayers();
+                    }, 500);
                 }
                 
                 // Si el juego terminó
                 if (gameData.status === "finished") {
-                    console.log("Juego terminado");
+                    console.log("Juego terminado detectado");
                     endGame();
                 }
             }
         });
+
+        console.log("Suscripción a juego activada");
 
         // Suscribirse a cambios en jugadores de este juego
         await pb.collection('players').subscribe(`game = "${gameId}"`, async (e) => {
@@ -903,9 +914,13 @@ async function subscribeToRealtime() {
     } catch (error) {
         console.error("Error en suscripción en tiempo real:", error);
         showError("Error de conexión en tiempo real", error.message);
+        
+        // Reintentar suscripción después de 5 segundos
+        setTimeout(() => {
+            subscribeToRealtime();
+        }, 5000);
     }
 }
-
         // Selección de equipo
         teamElements.forEach(team => {
             team.addEventListener('click', () => {
@@ -1037,18 +1052,23 @@ async function startGame() {
 
         console.log("Host iniciando juego...");
         
-        // Actualizar estado del juego a started
+        // Desactivar autocancelación para esta solicitud específica
         await pb.collection('games').update(gameId, {
             status: "started",
             started_at: new Date().toISOString(),
             current_question: 0
+        }, { 
+            $autoCancel: false  // Desactivar autocancelación para esta solicitud
         });
 
+        console.log("Estado del juego actualizado a 'started'");
+        
         // El host también necesita cambiar de pantalla
         startGameForAllPlayers();
 
     } catch (error) {
-        showError("Error iniciando juego", error.message);
+        console.error("Error detallado iniciando juego:", error);
+        showError("Error iniciando juego", `Detalles: ${error.message}`);
     }
 }
 
@@ -1062,31 +1082,39 @@ async function startGameForAllPlayers() {
     try {
         console.log("Iniciando juego para todos los jugadores...");
         
+        // Verificar que estamos en la pantalla correcta
+        if (!document.getElementById('waiting-screen').classList.contains('active')) {
+            console.log("No está en pantalla de espera, ignorando inicio");
+            return;
+        }
+        
         // Todos los jugadores cargan la pantalla de juego
         showScreen('game-screen');
         
-        // Obtener el estado actual del juego
-        const game = await pb.collection('games').getOne(gameId);
+        // Obtener el estado actual del juego sin autocancelación
+        const game = await pb.collection('games').getOne(gameId, { 
+            $autoCancel: false 
+        });
+        
         currentQuestionIndex = game.current_question || 0;
         
         await loadQuestion();
         startTimer();
+        
     } catch (error) {
-        showError("Error iniciando juego", error.message);
+        console.error("Error en startGameForAllPlayers:", error);
+        showError("Error al unirse al juego", error.message);
     }
 }
 
- // Cargar pregunta
+// Cargar pregunta
 async function loadQuestion() {
     try {
-        // Obtener el estado actual del juego con parámetro único
-        const uniqueParam = new Date().getTime();
+        // Obtener el estado actual del juego sin autocancelación
         const game = await pb.collection('games').getOne(gameId, {
-            // Desactivar autocancelación
-            $autoCancel: false,
-            // Parámetro único
-            requestKey: `game_state_${uniqueParam}`
-        });        
+            $autoCancel: false
+        });
+        
         currentQuestionIndex = game.current_question || 0;
         
         if (currentQuestionIndex >= questions.length) {
@@ -1368,6 +1396,20 @@ teamElement.classList.add('team-score', teamClass);
                 }
             }
         }, 10000); // Verificar cada 10 segundos
+
+// Al final de tu script, agrega esto:
+setInterval(async () => {
+    // Verificar si la suscripción está activa
+    if (gameId && (!realtimeSubscription || realtimeSubscription.closed)) {
+        console.log("Reconectando suscripción...");
+        try {
+            await subscribeToRealtime();
+        } catch (error) {
+            console.error("Error reconectando suscripción:", error);
+        }
+    }
+}, 10000); // Verificar cada 10 segundos
+
     </script>
 </body>
 </html>
