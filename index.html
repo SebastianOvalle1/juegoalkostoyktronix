@@ -485,44 +485,98 @@ let pb = new PocketBase(POCKETBASE_URL);
 
 // DESACTIVAR AUTOCANCELACIÓN GLOBALMENTE - ESTO ES CLAVE
 pb.autoCancellation(false);
-        
-        // Estado del juego
-        let players = [];
-        let currentPlayer = null;
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let lives = 3;
-        let timer;
-        let timeLeft = 30;
-        let lifeElements = [];
-        let gameId = null;
-        let realtimeSubscription = null;
-        let isOnline = true;
 
-        // Elementos del DOM
-        const screens = document.querySelectorAll('.screen');
-        const startBtn = document.getElementById('start-btn');
-        const joinBtn = document.getElementById('join-btn');
-        const startGameBtn = document.getElementById('start-game-btn');
-        const playAgainBtn = document.getElementById('play-again-btn');
-        const playerNameInput = document.getElementById('player-name');
-        const playersList = document.getElementById('players-list');
-        const playersCount = document.getElementById('players-count');
-        const questionText = document.getElementById('question-text');
-        const answersContainer = document.querySelector('.answers-container');
-        const currentPlayerElement = document.getElementById('current-player');
-        const currentScoreElement = document.getElementById('current-score');
-        const currentLivesElement = document.getElementById('current-lives');
-        const timerElement = document.getElementById('timer');
-        const scoreboard = document.getElementById('scoreboard');
-        const teamsScoreboard = document.getElementById('teams-scoreboard');
-        const teamElements = document.querySelectorAll('.team');
-        const tabs = document.querySelectorAll('.tab');
-        const rankingContents = document.querySelectorAll('.ranking-content');
-        const errorMessage = document.getElementById('error-message');
-        const errorText = document.getElementById('error-text');
-        const debugInfo = document.getElementById('debug-info');
-        const retryBtn = document.getElementById('retry-btn');
+// Estado del juego
+let players = [];
+let currentPlayer = null;
+let currentQuestionIndex = 0;
+let score = 0;
+let lives = 3;
+let timer;
+let timeLeft = 30;
+let lifeElements = [];
+let gameId = null;
+let realtimeSubscription = null;
+let isOnline = true;
+
+// Obtener referencias a elementos DOM
+const startBtn = document.getElementById('start-btn');
+const joinBtn = document.getElementById('join-btn');
+const startGameBtn = document.getElementById('start-game-btn');
+const playAgainBtn = document.getElementById('play-again-btn');
+const retryBtn = document.getElementById('retry-btn');
+const playerNameInput = document.getElementById('player-name');
+const playersCount = document.getElementById('players-count');
+const playersList = document.getElementById('players-list');
+const currentPlayerElement = document.getElementById('current-player');
+const currentScoreElement = document.getElementById('current-score');
+const currentLivesElement = document.getElementById('current-lives');
+const questionText = document.getElementById('question-text');
+const timerElement = document.getElementById('timer');
+const answersContainer = document.querySelector('.answers-container');
+const scoreboard = document.getElementById('scoreboard');
+const teamsScoreboard = document.getElementById('teams-scoreboard');
+const errorMessage = document.getElementById('error-message');
+const errorText = document.getElementById('error-text');
+const debugInfo = document.getElementById('debug-info');
+
+// Obtener todas las pantallas y equipos
+const screens = document.querySelectorAll('.screen');
+const teamElements = document.querySelectorAll('.team');
+const tabs = document.querySelectorAll('.tab');
+const rankingContents = document.querySelectorAll('.ranking-content');
+        
+        // Funciones de API directas con fetch para evitar autocancelación
+async function pbFetch(collection, options = {}) {
+    const { method = 'GET', id = '', data = null, filter = '' } = options;
+    const url = id 
+        ? `${POCKETBASE_URL}api/collections/${collection}/records/${id}`
+        : `${POCKETBASE_URL}api/collections/${collection}/records`;
+    
+    const params = new URLSearchParams();
+    if (filter) params.append('filter', filter);
+    
+    const fullUrl = params.toString() ? `${url}?${params.toString()}` : url;
+    
+    const config = {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    };
+    
+    if (data && method !== 'GET') {
+        config.body = JSON.stringify(data);
+    }
+    
+    try {
+        const response = await fetch(fullUrl, config);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Error en pbFetch ${collection}:`, error);
+        throw error;
+    }
+}
+
+// Versiones específicas para evitar autocancelación
+async function pbCreate(collection, data) {
+    return pbFetch(collection, { method: 'POST', data });
+}
+
+async function pbUpdate(collection, id, data) {
+    return pbFetch(collection, { method: 'PATCH', id, data });
+}
+
+async function pbGetOne(collection, id) {
+    return pbFetch(collection, { method: 'GET', id });
+}
+
+async function pbGetList(collection, filter = '') {
+    return pbFetch(collection, { method: 'GET', filter });
+}
 
         // Preguntas
         const questions = [
@@ -763,6 +817,11 @@ startBtn.addEventListener('click', () => {
 
 joinBtn.addEventListener('click', registerPlayer);
 startGameBtn.addEventListener('click', () => {
+console.log("🟢 Botón de iniciar juego clickeado");
+    console.log("Current Player:", currentPlayer);
+    console.log("Players:", players);
+    console.log("Game ID:", gameId);
+
     // Pequeño delay para evitar autocancelación
     setTimeout(startGame, 100);
 });
@@ -821,37 +880,23 @@ function delay(ms) {
             }
         }
 
-// Inicializar el juego - VERSIÓN MEJORADA
+// Inicializar el juego - USANDO FETCH DIRECTAMENTE
 async function initGame() {
     hideError();
     
-    if (!await checkConnection()) {
-        return;
-    }
-
     try {
         // Inicializar elementos de vida
         lifeElements = document.querySelectorAll('.life');
         
-        // Buscar juegos existentes con un request único
-        const requestKey = `init_game_${Date.now()}`;
-        const existingGames = await pb.collection('games').getFullList({
-            filter: 'status = "waiting"',
-            sort: '-created',
-            requestKey: requestKey,
-            $autoCancel: false
-        });
-
-        if (existingGames.length > 0) {
-            gameId = existingGames[0].id;
+        // Buscar juegos existentes usando fetch directo
+        const existingGames = await pbGetList('games', 'status = "waiting"');
+        
+        if (existingGames.items && existingGames.items.length > 0) {
+            gameId = existingGames.items[0].id;
             console.log("Uniéndose a juego existente:", gameId);
             
-            // Obtener el estado actual del juego con request único
-            const gameRequestKey = `get_game_${Date.now()}`;
-            const game = await pb.collection('games').getOne(gameId, {
-                requestKey: gameRequestKey,
-                $autoCancel: false
-            });
+            // Obtener el estado actual del juego
+            const game = await pbGetOne('games', gameId);
             
             // Verificar estado inmediatamente
             if (game.status === "started") {
@@ -865,29 +910,22 @@ async function initGame() {
             await updatePlayersList();
         } else {
             console.log("Creando nuevo juego");
-            const createRequestKey = `create_game_${Date.now()}`;
-            const game = await pb.collection('games').create({
+            const game = await pbCreate('games', {
                 code: Math.floor(1000 + Math.random() * 9000).toString(),
                 status: "waiting",
                 players_count: 0,
                 current_question: 0
-            }, {
-                requestKey: createRequestKey,
-                $autoCancel: false
             });
             gameId = game.id;
             console.log("Nuevo juego creado:", gameId);
         }
         
-        // Suscribirse a cambios en tiempo real
+        // Suscribirse a cambios en tiempo real (solo suscripción usa SDK)
         await subscribeToRealtime();
         
     } catch (error) {
-        console.error("Error detallado inicializando juego:", error);
-        showError(
-            "Error inicializando el juego", 
-            `Detalles: ${error.message || 'Error desconocido'}`
-        );
+        console.error("Error inicializando juego:", error);
+        showError("Error inicializando el juego", error.message);
     }
 }
 
@@ -898,6 +936,8 @@ async function subscribeToRealtime() {
         
         if (!gameId) {
             console.error("No hay gameId para suscribirse");
+            // Intentar obtener gameId nuevamente después de un breve delay
+            setTimeout(subscribeToRealtime, 2000);
             return;
         }
 
@@ -971,7 +1011,7 @@ async function subscribeToRealtime() {
             });
         });
 
-// Registrar jugador (función completa)
+// Registrar jugador - USANDO FETCH DIRECTAMENTE
 async function registerPlayer() {
     if (!isOnline) {
         showError("No hay conexión", "Por favor, revisa tu conexión e intenta nuevamente.");
@@ -986,15 +1026,15 @@ async function registerPlayer() {
     if (!gameId) { showError("Error", "gameId no definido."); return; }
 
     try {
-        // 1) Crear el player en PocketBase
-        const player = await pb.collection('players').create({
+        // 1) Crear el player usando fetch directo
+        const player = await pbCreate('players', {
             name,
             team: selectedTeam.dataset.team,
             score: 0,
             lives: 3,
             game: gameId,
             connected: true
-        }, { $autoCancel: false });
+        });
 
         // 2) Actualizar currentPlayer localmente
         currentPlayer = {
@@ -1006,50 +1046,42 @@ async function registerPlayer() {
             connected: true
         };
 
-        // 3) Recalcular players_count consultando players reales y actualizar games
-        const playersListData = await pb.collection('players').getFullList({
-            filter: `game = "${gameId}" && connected = true`,
-            sort: 'created'
-        });
-        const realCount = playersListData.length;
-        await pb.collection('games').update(gameId, { players_count: realCount }, { $autoCancel: false });
+        // 3) Recalcular players_count
+        const playersListData = await pbGetList('players', `game = "${gameId}" && connected = true`);
+        const realCount = playersListData.items ? playersListData.items.length : 0;
+        
+        await pbUpdate('games', gameId, { players_count: realCount });
 
         // 4) VERIFICAR ESTADO DEL JUEGO AL UNIRSE
         try {
-            const game = await pb.collection('games').getOne(gameId);
+            const game = await pbGetOne('games', gameId);
             if (game.status === "started") {
-                // Si el juego ya comenzó, unirse directamente a la pantalla de juego
                 console.log("Juego ya iniciado - uniéndose directamente");
                 startGameForAllPlayers();
             } else {
-                // Si no ha comenzado, mostrar pantalla de espera
                 showScreen('waiting-screen');
                 await updatePlayersList();
             }
         } catch (error) {
             console.error("Error verificando estado del juego:", error);
-            // En caso de error, mostrar pantalla de espera por defecto
             showScreen('waiting-screen');
             await updatePlayersList();
         }
 
     } catch (error) {
-        showError("Error registrando jugador", `No se pudo crear el jugador: ${error.message || 'Error desconocido'}`);
+        showError("Error registrando jugador", error.message);
     }
 }
 
- // Actualizar lista de jugadores
+ // Actualizar lista de jugadores - USANDO FETCH DIRECTAMENTE
 async function updatePlayersList() {
     try {
         if (!gameId) return;
 
-        // Traer jugadores actuales del juego
-        const playersListData = await pb.collection('players').getFullList({
-            filter: `game = "${gameId}" && connected = true`,
-            sort: 'created'
-        });
-
-        players = playersListData;
+        // Traer jugadores actuales del juego usando fetch directo
+        const playersListData = await pbGetList('players', `game = "${gameId}" && connected = true`);
+        
+        players = playersListData.items || [];
         playersCount.textContent = players.length;
 
         // Render players
@@ -1078,7 +1110,7 @@ async function updatePlayersList() {
     }
 }
 
-// Iniciar juego (solo para el primer jugador) - VERSIÓN MEJORADA
+// Iniciar juego - USANDO FETCH DIRECTAMENTE
 async function startGame() {
     try {
         console.log("🔧 Intentando iniciar juego...");
@@ -1099,16 +1131,11 @@ async function startGame() {
 
         console.log("🎮 Host iniciando juego...");
         
-        // Request único para evitar autocancelación
-        const requestKey = `start_game_${Date.now()}`;
-        
-        await pb.collection('games').update(gameId, {
+        // Usar fetch directo para evitar autocancelación
+        await pbUpdate('games', gameId, {
             status: "started",
             started_at: new Date().toISOString(),
             current_question: 0
-        }, { 
-            requestKey: requestKey,
-            $autoCancel: false
         });
 
         console.log("✅ Estado del juego actualizado a 'started'");
@@ -1117,13 +1144,8 @@ async function startGame() {
         startGameForAllPlayers();
 
     } catch (error) {
-        console.error("❌ Error detallado iniciando juego:", error);
-        showError("Error iniciando juego", `Detalles: ${error.message}`);
-        
-        // Reintentar después de 2 segundos
-        setTimeout(() => {
-            startGame();
-        }, 2000);
+        console.error("❌ Error iniciando juego:", error);
+        showError("Error iniciando juego", error.message);
     }
 }
 
@@ -1149,12 +1171,8 @@ async function startGameForAllPlayers() {
         // Pequeña pausa para que la UI se actualice
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Obtener el estado actual del juego sin autocancelación
-        const requestKey = `get_game_state_${Date.now()}`;
-        const game = await pb.collection('games').getOne(gameId, { 
-            requestKey: requestKey,
-            $autoCancel: false 
-        });
+        // Obtener el estado actual del juego usando fetch directo
+        const game = await pbGetOne('games', gameId);
         
         currentQuestionIndex = game.current_question || 0;
         console.log("📝 Cargando pregunta:", currentQuestionIndex);
@@ -1175,10 +1193,8 @@ async function startGameForAllPlayers() {
 // Cargar pregunta
 async function loadQuestion() {
     try {
-        // Obtener el estado actual del juego sin autocancelación
-        const game = await pb.collection('games').getOne(gameId, {
-            $autoCancel: false
-        });
+        // Obtener el estado actual del juego usando fetch directo
+        const game = await pbGetOne('games', gameId);
         
         currentQuestionIndex = game.current_question || 0;
         
@@ -1245,29 +1261,17 @@ async function selectAnswer(e) {
         }
     }
     
-// Actualizar jugador en PocketBase
+// Actualizar jugador usando fetch directo
     try {
-        // Usar parámetro único para evitar autocancelación
-        const uniqueParam = new Date().getTime();
-        await pb.collection('players').update(currentPlayer.id, {
+        await pbUpdate('players', currentPlayer.id, {
             score: currentPlayer.score,
             lives: currentPlayer.lives
-        }, {
-            // Desactivar autocancelación
-            $autoCancel: false,
-            requestKey: `player_update_${uniqueParam}`
         });
         
         // Avanzar a la siguiente pregunta para todos
         const nextQuestionIndex = currentQuestionIndex + 1;
-        await pb.collection('games').update(gameId, {
-            current_question: nextQuestionIndex,
-            // Campo único para evitar autocancelación
-            unique_update: uniqueParam
-        }, {
-            // Desactivar autocancelación
-            $autoCancel: false,
-            requestKey: `game_update_${uniqueParam}`
+        await pbUpdate('games', gameId, {
+            current_question: nextQuestionIndex
         });
         
         setTimeout(() => {
@@ -1278,7 +1282,6 @@ async function selectAnswer(e) {
         console.error("Error actualizando jugador:", error);
     }
 }
-
         // Efecto al perder una vida
         function loseLife() {
             const remainingLives = currentPlayer.lives;
