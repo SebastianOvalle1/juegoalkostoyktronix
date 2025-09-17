@@ -862,47 +862,49 @@ async function initGame() {
     }
 }
 
-// Suscribirse a cambios en tiempo real
+// Suscribirse a cambios en tiempo real (reemplaza tu función)
 async function subscribeToRealtime() {
     try {
-        // Cancelar suscripción existente si hay una
-        if (realtimeSubscription) {
-            realtimeSubscription.unsubscribe();
+        // Desuscribirse si ya hay una suscripción al juego
+        if (realtimeSubscription && typeof realtimeSubscription.unsubscribe === 'function') {
+            try { realtimeSubscription.unsubscribe(); } catch(e){ /* ignore */ }
+            realtimeSubscription = null;
         }
-        
-        // Suscribirse a cambios en el juego
-        realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
-            if (e.action === 'update') {
+
+        // Suscribirse a cambios en el juego (registro específico)
+        // NOTA: suscríbete solo después de que gameId esté definido
+        if (!gameId) return;
+
+        realtimeSubscription = pb.collection('games').subscribe(gameId, async (e) => {
+            // e.action puede ser 'create'|'update'|'delete'
+            if (e.action === 'update' || e.action === 'create') {
                 const gameData = e.record;
-                
-                // Actualizar contador de jugadores
-                playersCount.textContent = gameData.players_count;
-                
-                // Si el juego ha comenzado (para todos los jugadores)
+                // Actualizar contador visible
+                playersCount.textContent = gameData.players_count ?? playersCount.textContent;
+
+                // Si el juego empezó, todos deben ejecutar la transición.
                 if (gameData.status === "started") {
-                    // Si estamos en la pantalla de espera, cambiar a la pantalla de juego
+                    // Cambiar a pantalla de juego desde el evento real-time
                     if (document.getElementById('waiting-screen').classList.contains('active')) {
-                        startGameForAllPlayers(); // Nueva función
+                        startGameForAllPlayers();
                     }
                 }
-                
-                // Si es el final del juego
+
                 if (gameData.status === "finished") {
-                    // Si estamos en la pantalla de juego, cambiar a la pantalla de puntuaciones
                     if (document.getElementById('game-screen').classList.contains('active')) {
                         endGame();
                     }
                 }
             }
         });
-        
-        // También suscribirse a cambios en jugadores
-        await pb.collection('players').subscribe('*', async (e) => {
-            // Verificar que el jugador pertenece a esta partida
-            if (e.record.game === gameId) {
-                await updatePlayersList();
-            }
+
+        // Suscribirse solo a cambios de players relacionados con este gameId
+        // Filtrar con la condición game="ID"
+        await pb.collection('players').subscribe(`game="${gameId}"`, async (e) => {
+            // cualquier cambio en players de este game -> actualizar lista
+            await updatePlayersList();
         });
+
     } catch (error) {
         console.error("Error en suscripción en tiempo real:", error);
     }
@@ -916,132 +918,105 @@ async function subscribeToRealtime() {
             });
         });
 
-        // Registrar jugador
-        async function registerPlayer() {
-            if (!isOnline) {
-                showError("No hay conexión", "Por favor, revisa tu conexión e intenta nuevamente.");
-                return;
-            }
+// Registrar jugador (reemplaza tu función actual)
+async function registerPlayer() {
+    if (!isOnline) {
+        showError("No hay conexión", "Por favor, revisa tu conexión e intenta nuevamente.");
+        return;
+    }
 
-            const name = playerNameInput.value.trim();
-            const selectedTeam = document.querySelector('.team.selected');
-            
-            if (!name) {
-                alert('Por favor ingresa tu nombre');
-                return;
-            }
-            
-            if (!selectedTeam) {
-                alert('Por favor selecciona un equipo');
-                return;
-            }
-            
-            try {
-                // Crear jugador en PocketBase
-                const player = await pb.collection('players').create({
-                    name,
-                    team: selectedTeam.dataset.team,
-                    score: 0,
-                    lives: 3,
-                    game: gameId,
-                    connected: true
-                });
-                
-                currentPlayer = {
-                    id: player.id,
-                    name,
-                    team: selectedTeam.dataset.team,
-                    score: 0,
-                    lives: 3,
-                    connected: true
-                };
-                
-                // Actualizar contador de jugadores en la partida
-                await pb.collection('games').update(gameId, {
-                    players_count: players.length + 1
-                });
-                
-                showScreen('waiting-screen');
-                await updatePlayersList();
-            } catch (error) {
-                showError(
-                    "Error registrando jugador", 
-                    `No se pudo crear el jugador: ${error.message || 'Error desconocido'}`
-                );
-            }
-        }
+    const name = playerNameInput.value.trim();
+    const selectedTeam = document.querySelector('.team.selected');
+    
+    if (!name) { alert('Por favor ingresa tu nombre'); return; }
+    if (!selectedTeam) { alert('Por favor selecciona un equipo'); return; }
+    if (!gameId) { showError("Error", "gameId no definido."); return; }
+
+    try {
+        // 1) Crear el player en PocketBase
+        const player = await pb.collection('players').create({
+            name,
+            team: selectedTeam.dataset.team,
+            score: 0,
+            lives: 3,
+            game: gameId,
+            connected: true
+        }, { $autoCancel: false });
+
+        // 2) Actualizar currentPlayer localmente
+        currentPlayer = {
+            id: player.id,
+            name,
+            team: selectedTeam.dataset.team,
+            score: 0,
+            lives: 3,
+            connected: true
+        };
+
+        // 3) Recalcular players_count consultando players reales y actualizar games
+        const playersListData = await pb.collection('players').getFullList({
+            filter: `game = "${gameId}" && connected = true`,
+            sort: 'created'
+        });
+        const realCount = playersListData.length;
+        await pb.collection('games').update(gameId, { players_count: realCount }, { $autoCancel: false });
+
+        // 4) Mostrar pantalla de espera y actualizar UI
+        showScreen('waiting-screen');
+        await updatePlayersList();
+
+    } catch (error) {
+        showError("Error registrando jugador", `No se pudo crear el jugador: ${error.message || 'Error desconocido'}`);
+    }
+}
 
      // Actualizar lista de jugadores
 let lastUpdateTime = 0;
 const UPDATE_COOLDOWN = 1000; // 1 segundo entre actualizaciones
 
 async function updatePlayersList() {
-    const now = Date.now();
-    if (now - lastUpdateTime < UPDATE_COOLDOWN) {
-        return; // Evitar actualizaciones demasiado frecuentes
-    }
-    lastUpdateTime = now;
-    
     try {
-        // Usar parámetros únicos para evitar autocancelación
-        const uniqueParam = new Date().getTime();
+        if (!gameId) return;
+
+        // Traer jugadores actuales del juego (conectados)
         const playersListData = await pb.collection('players').getFullList({
             filter: `game = "${gameId}" && connected = true`,
-            sort: 'created',
-            // Desactivar autocancelación explícitamente
-            $autoCancel: false,
-            // Agregar parámetro único
-            requestKey: `players_update_${uniqueParam}`
+            sort: 'created'
         });
-        
+
         players = playersListData;
         playersCount.textContent = players.length;
-        
-        // Limpiar lista
+
+        // Render players
         const playersListElement = document.getElementById('players-list');
         playersListElement.innerHTML = '';
-        
-        // Agregar jugadores
         players.forEach(player => {
             const playerElement = document.createElement('div');
             playerElement.classList.add('player-card', `team-${player.team}`);
-            playerElement.innerHTML = `
-                <div><strong>${player.name}</strong></div>
-                <div>Equipo ${player.team}</div>
-            `;
+            playerElement.innerHTML = `<div><strong>${player.name}</strong></div><div>Equipo ${player.team}</div>`;
             playersListElement.appendChild(playerElement);
         });
-        
-        // Mostrar/ocultar botón de inicio
+
+        // Mostrar/ocultar botón de inicio para el primer jugador
         if (players.length > 0 && currentPlayer) {
-            // Verificar si el jugador actual es el primero en unirse
             const sortedPlayers = [...players].sort((a, b) => new Date(a.created) - new Date(b.created));
             const firstPlayer = sortedPlayers[0];
-            
-            if (firstPlayer.id === currentPlayer.id) {
-                startGameBtn.style.display = 'block';
-            } else {
-                startGameBtn.style.display = 'none';
-            }
+            startGameBtn.style.display = (firstPlayer && currentPlayer.id === firstPlayer.id) ? 'block' : 'none';
         } else {
             startGameBtn.style.display = 'none';
         }
-        
-        // Si el juego ya comenzó pero este jugador aún está en la pantalla de espera
-try {
-    const uniqueParam = new Date().getTime();
-    const game = await pb.collection('games').getOne(gameId, {
-        $autoCancel: false,
-        timestamp: uniqueParam
-    });
-    
-    if (game.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
-        startGameForAllPlayers(); // Cambiar a la nueva función
-    }
-} catch (error) {
-    console.error("Error verificando estado del juego:", error);
-}
-     } catch (error) {
+
+        // Si el juego ya se inició y el cliente está en waiting-screen, iniciar localmente (fallback)
+        try {
+            const game = await pb.collection('games').getOne(gameId);
+            if (game.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
+                startGameForAllPlayers();
+            }
+        } catch (err) {
+            console.error("Error verificando estado del juego:", err);
+        }
+
+    } catch (error) {
         console.error("Error actualizando lista de jugadores:", error);
     }
 }
@@ -1049,41 +1024,33 @@ try {
 // Iniciar juego (solo para el primer jugador)
 async function startGame() {
     try {
-        console.log("Iniciando juego para todos los jugadores...");
-        
-        // Solo el primer jugador puede iniciar el juego para todos
+        // Solo el primer jugador puede iniciar el juego
         const sortedPlayers = [...players].sort((a, b) => new Date(a.created) - new Date(b.created));
         const firstPlayer = sortedPlayers[0];
-        
-        // Si el jugador actual es el primero, actualizar el estado del juego
-        if (currentPlayer && currentPlayer.id === firstPlayer.id) {
-            // Usar una marca de tiempo única para evitar autocancelación
-            const uniqueTimestamp = new Date().getTime();
-            
-            // Crear un objeto con parámetros únicos para cada solicitud
-            const updateData = {
-                status: "started",
-                started_at: new Date(),
-                current_question: 0,
-                // Campo único para evitar autocancelación
-                unique_field: uniqueTimestamp
-            };
-            
-            await pb.collection('games').update(gameId, updateData, {
-                // Desactivar autocancelación para esta solicitud específica
-                $autoCancel: false
-            });
-            
-            // El primer jugador también inicia su juego localmente
-            startGameForAllPlayers();
+
+        if (!currentPlayer || !firstPlayer) return;
+
+        if (currentPlayer.id !== firstPlayer.id) {
+            // no es el host
+            return;
         }
+
+        // Actualizar estado del juego a started (los clientes suscritos reaccionarán)
+        await pb.collection('games').update(gameId, {
+            status: "started",
+            started_at: new Date().toISOString(),
+            current_question: 0
+        }, { $autoCancel: false });
+
+        // Opcional: el host puede mostrar la pantalla inmediatamente para mejor UX,
+        // pero NO es obligatorio: la suscripción arrancará la pantalla en todos.
+        showScreen('game-screen');
+
     } catch (error) {
-        showError(
-            "Error iniciando juego", 
-            `No se pudo iniciar el juego: ${error.message || 'Error desconocido'}`
-        );
+        showError("Error iniciando juego", `No se pudo iniciar el juego: ${error.message || 'Error desconocido'}`);
     }
 }
+
 
 // Función para generar una clave única para las solicitudes
 function generateUniqueRequestKey(prefix) {
@@ -1366,23 +1333,25 @@ teamElement.classList.add('team-score', teamClass);
         // Iniciar el juego cuando se carga la página
         window.addEventListener('load', initGame);
         
-        // Limpiar suscripciones al cerrar la página
-        window.addEventListener('beforeunload', async () => {
-            if (realtimeSubscription) {
-                realtimeSubscription.unsubscribe();
-            }
-            
-            // Marcar jugador como desconectado
-            if (currentPlayer) {
-                try {
-                    await pb.collection('players').update(currentPlayer.id, {
-                        connected: false
-                    });
-                } catch (error) {
-                    console.error("Error marcando jugador como desconectado:", error);
-                }
-            }
-        });
+        window.addEventListener('beforeunload', () => {
+    // Desuscribirse localmente (no await)
+    try { if (realtimeSubscription && typeof realtimeSubscription.unsubscribe === 'function') realtimeSubscription.unsubscribe(); } catch(e){}
+
+    // Intentar marcar desconexión con sendBeacon (sin bloquear)
+    if (currentPlayer && currentPlayer.id) {
+        try {
+            const url = `${POCKETBASE_URL}api/collections/players/records/${currentPlayer.id}`;
+            const body = JSON.stringify({ connected: false });
+            // Usa sendBeacon a un endpoint intermedio que acepte PATCH/PUT no siempre es posible.
+            // Alternativa: guardar en localStorage para limpiar después o confiar en timeout del servidor.
+            // Aquí intentaremos un POST/PUT por fetch (no garantizado en beforeunload).
+            navigator.sendBeacon(url, body);
+        } catch (err) {
+            // fallback silencioso
+        }
+    }
+});
+
 
         // Verificar conexión periódicamente
         setInterval(async () => {
