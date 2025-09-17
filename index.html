@@ -682,24 +682,24 @@
                 lifeElements = document.querySelectorAll('.life');
                 
                 // Crear o unirse a una partida existente
-                const existingGames = await pb.collection('games').getFullList({
-                    filter: 'status = "waiting"'
-                });
-                
-                if (existingGames.length > 0) {
-                    gameId = existingGames[0].id;
-                    await pb.collection('games').update(gameId, {
-                        players_count: existingGames[0].players_count + 1
-                    });
-                } else {
-                    const game = await pb.collection('games').create({
-                        code: Math.floor(1000 + Math.random() * 9000).toString(),
-                        status: "waiting",
-                        players_count: 1,
-                        current_question: 0
-                    });
-                    gameId = game.id;
-                }
+const existingGames = await pb.collection('games').getFullList({
+    filter: 'status = "waiting"',
+    sort: '-created' // Ordenar por más reciente
+});
+
+if (existingGames.length > 0) {
+    gameId = existingGames[0].id;
+    // Obtener jugadores existentes inmediatamente
+    await updatePlayersList();
+} else {
+    const game = await pb.collection('games').create({
+        code: Math.floor(1000 + Math.random() * 9000).toString(),
+        status: "waiting",
+        players_count: 0, // Iniciar en 0
+        current_question: 0
+    });
+    gameId = game.id;
+}
                 
                 // Suscribirse a cambios en tiempo real
                 await subscribeToRealtime();
@@ -739,12 +739,13 @@
                     }
                 });
                 
-                // También suscribirse a cambios en jugadores
-                await pb.collection('players').subscribe('*', (e) => {
-                    if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
-                        updatePlayersList();
-                    }
-                });
+                // También suscribirse a cambios en jugadores de ESTA partida específica
+await pb.collection('players').subscribe('*', (e) => {
+    // Verificar que el jugador pertenece a esta partida
+    if (e.record.game === gameId) {
+        updatePlayersList();
+    }
+});
             } catch (error) {
                 console.error("Error en suscripción en tiempo real:", error);
             }
@@ -764,6 +765,11 @@
                 showError("No hay conexión", "Por favor, revisa tu conexión e intenta nuevamente.");
                 return;
             }
+
+// Actualizar contador de jugadores en la partida
+await pb.collection('games').update(gameId, {
+    players_count: players.length + 1 // Usar players.length en lugar de existingGames[0].players_count
+});
 
             const name = playerNameInput.value.trim();
             const selectedTeam = document.querySelector('.team.selected');
@@ -833,12 +839,18 @@
                     playersListElement.appendChild(playerElement);
                 });
                 
-                // Mostrar/ocultar botón de inicio según si es el primer jugador
-                if (players.length > 0 && players[0].id === currentPlayer.id) {
-                    startGameBtn.style.display = 'block';
-                } else {
-                    startGameBtn.style.display = 'none';
-                }
+                // Mostrar/ocultar botón de inicio - lógica corregida
+if (players.length > 0) {
+    // Verificar si el jugador actual es el primero en unirse
+    // Esto asume que el primer jugador en la lista es el primero que se unió
+    if (players[0].id === currentPlayer.id) {
+        startGameBtn.style.display = 'block';
+    } else {
+        startGameBtn.style.display = 'none';
+    }
+} else {
+    startGameBtn.style.display = 'none';
+}
             } catch (error) {
                 console.error("Error actualizando lista de jugadores:", error);
             }
