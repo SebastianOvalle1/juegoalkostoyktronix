@@ -1036,11 +1036,14 @@ async function startGame() {
         }
 
         // Actualizar estado del juego a started (los clientes suscritos reaccionarán)
-        await pb.collection('games').update(gameId, {
-            status: "started",
-            started_at: new Date().toISOString(),
-            current_question: 0
-        }, { $autoCancel: false });
+        const uniqueParam = Date.now();
+await pb.collection('games').update(gameId, {
+    players_count: realCount,
+    unique_update: uniqueParam
+}, {
+    $autoCancel: false,
+    requestKey: `update_players_count_${uniqueParam}`
+});
 
         // Opcional: el host puede mostrar la pantalla inmediatamente para mejor UX,
         // pero NO es obligatorio: la suscripción arrancará la pantalla en todos.
