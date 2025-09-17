@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz Battle - Actividad Empresarial</title>
-    <!-- Estilos (se mantienen igual) -->
     <style>
-        /* Estilos existentes (se mantienen igual) */
+        /* Todos tus estilos se mantienen igual */
         :root {
             --primary: #4a6baf;
             --secondary: #ff6b6b;
@@ -136,7 +135,7 @@
             background: rgba(255, 255, 255, 0.1);
             padding: 15px;
             border-radius: 10px;
-            width: 220px; /* Aumentado para acomodar el texto */
+            width: 220px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -144,7 +143,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 120px; /* Altura mínima para consistencia */
+            min-height: 120px;
         }
         
         .team:hover {
@@ -470,14 +469,14 @@
         </div>
     </div>
 
-	<script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
     
     <script>
         // Configuración de PocketBase
-        const POCKETBASE_URL = 'https://was-pink.pockethost.io/'; // Cambiar por tu URL
+        const POCKETBASE_URL = 'https://was-pink.pockethost.io/';
         const pb = new PocketBase(POCKETBASE_URL);
         
-        // Estado del juego
+        // Estado del juego (SOLO UNA DECLARACIÓN)
         let players = [];
         let currentPlayer = null;
         let currentQuestionIndex = 0;
@@ -489,7 +488,7 @@
         let gameId = null;
         let realtimeSubscription = null;
 
-        // Elementos del DOM (se mantienen igual)
+        // Elementos del DOM
         const screens = document.querySelectorAll('.screen');
         const startBtn = document.getElementById('start-btn');
         const joinBtn = document.getElementById('join-btn');
@@ -510,7 +509,7 @@
         const tabs = document.querySelectorAll('.tab');
         const rankingContents = document.querySelectorAll('.ranking-content');
 
-        // Datos del juego - Preguntas
+        // Preguntas
         const questions = [
             {
                 question: "¿Cuál es la capital de Francia?",
@@ -557,7 +556,6 @@
                     { text: "Michelangelo", correct: false }
                 ]
             },
-            // NUEVAS PREGUNTAS A PARTIR DE AQUÍ
             {
                 question: "¿Cuál es el metal líquido a temperatura ambiente?",
                 answers: [
@@ -602,178 +600,9 @@
                     { text: "2020", correct: false },
                     { text: "2017", correct: false }
                 ]
-            },
-            {
-                question: "¿Cuál es el océano más grande del mundo?",
-                answers: [
-                    { text: "Atlántico", correct: false },
-                    { text: "Índico", correct: false },
-                    { text: "Pacífico", correct: true },
-                    { text: "Ártico", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué metal es el principal componente del núcleo de la Tierra?",
-                answers: [
-                    { text: "Oro", correct: false },
-                    { text: "Hierro", correct: true },
-                    { text: "Plata", correct: false },
-                    { text: "Cobre", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué actor interpreta a Iron Man en el Universo Cinematográfico de Marvel?",
-                answers: [
-                    { text: "Chris Evans", correct: false },
-                    { text: "Chris Hemsworth", correct: false },
-                    { text: "Robert Downey Jr.", correct: true },
-                    { text: "Mark Ruffalo", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué cantante es conocida como 'La Reina del Pop'?",
-                answers: [
-                    { text: "Beyoncé", correct: false },
-                    { text: "Madonna", correct: true },
-                    { text: "Lady Gaga", correct: false },
-                    { text: "Rihanna", correct: false }
-                ]
-            },
-            {
-                question: "¿Cuál es el animal más grande del mundo?",
-                answers: [
-                    { text: "Elefante africano", correct: false },
-                    { text: "Ballena azul", correct: true },
-                    { text: "Tiburón ballena", correct: false },
-                    { text: "Jirafa", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué planeta tiene anillos visiblemente prominentes?",
-                answers: [
-                    { text: "Júpiter", correct: false },
-                    { text: "Saturno", correct: true },
-                    { text: "Urano", correct: false },
-                    { text: "Neptuno", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué superhéroe proviene del planeta Krypton?",
-                answers: [
-                    { text: "Batman", correct: false },
-                    { text: "Flash", correct: false },
-                    { text: "Superman", correct: true },
-                    { text: "Green Lantern", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué grupo musical lanzó el álbum 'The Dark Side of the Moon'?",
-                answers: [
-                    { text: "The Beatles", correct: false },
-                    { text: "Led Zeppelin", correct: false },
-                    { text: "Pink Floyd", correct: true },
-                    { text: "Queen", correct: false }
-                ]
-            },
-            {
-                question: "¿Cuál es el país más grande del mundo por área territorial?",
-                answers: [
-                    { text: "Canadá", correct: false },
-                    { text: "China", correct: false },
-                    { text: "Estados Unidos", correct: false },
-                    { text: "Rusia", correct: true }
-                ]
-            },
-            {
-                question: "¿Qué villano es el archienemigo de Spider-Man?",
-                answers: [
-                    { text: "Duende Verde", correct: true },
-                    { text: "Joker", correct: false },
-                    { text: "Lex Luthor", correct: false },
-                    { text: "Magneto", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué instrumento musical asocias con Louis Armstrong?",
-                answers: [
-                    { text: "Saxofón", correct: false },
-                    { text: "Piano", correct: false },
-                    { text: "Trompeta", correct: true },
-                    { text: "Batería", correct: false }
-                ]
-            },
-            {
-                question: "¿En qué continente se encuentra Egipto?",
-                answers: [
-                    { text: "Asia", correct: false },
-                    { text: "África", correct: true },
-                    { text: "Europa", correct: false },
-                    { text: "América", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué metal precioso tiene el símbolo químico 'Ag'?",
-                answers: [
-                    { text: "Oro", correct: false },
-                    { text: "Plata", correct: true },
-                    { text: "Platino", correct: false },
-                    { text: "Cobre", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué actor interpreta a Wolverine en las películas de X-Men?",
-                answers: [
-                    { text: "Hugh Jackman", correct: true },
-                    { text: "Ryan Reynolds", correct: false },
-                    { text: "Patrick Stewart", correct: false },
-                    { text: "Ian McKellen", correct: false }
-                ]
-            },
-            {
-                question: "¿Qué banda canadiense es conocida por éxitos como 'The Spirit of Radio'?",
-                answers: [
-                    { text: "Nickelback", correct: false },
-                    { text: "Rush", correct: true },
-                    { text: "Barenaked Ladies", correct: false },
-                    { text: "Arcade Fire", correct: false }
-                ]
             }
         ];
 
-        // Estado del juego
-        let players = [];
-        let currentPlayer = null;
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let lives = 3;
-        let timer;
-        let timeLeft = 30;
-        let lifeElements = [];
-
-        // Elementos del DOM
-        const screens = document.querySelectorAll('.screen');
-        const startBtn = document.getElementById('start-btn');
-        const joinBtn = document.getElementById('join-btn');
-        const startGameBtn = document.getElementById('start-game-btn');
-        const playAgainBtn = document.getElementById('play-again-btn');
-        const playerNameInput = document.getElementById('player-name');
-        const playersList = document.getElementById('players-list');
-        const playersCount = document.getElementById('players-count');
-        const questionText = document.getElementById('question-text');
-        const answersContainer = document.querySelector('.answers-container');
-        const currentPlayerElement = document.getElementById('current-player');
-        const currentScoreElement = document.getElementById('current-score');
-        const currentLivesElement = document.getElementById('current-lives');
-        const timerElement = document.getElementById('timer');
-        const scoreboard = document.getElementById('scoreboard');
-        const teamsScoreboard = document.getElementById('teams-scoreboard');
-        const teamElements = document.querySelectorAll('.team');
-        const tabs = document.querySelectorAll('.tab');
-        const rankingContents = document.querySelectorAll('.ranking-content');
-
-        // Almacenamiento simple en localStorage para simular "servidor"
-        const GAME_CODE = "quizbattle-" + Math.floor(1000 + Math.random() * 9000);
-        
         // Event Listeners
         startBtn.addEventListener('click', () => showScreen('register-screen'));
         joinBtn.addEventListener('click', registerPlayer);
@@ -785,11 +614,9 @@
             tab.addEventListener('click', () => {
                 const tabId = tab.dataset.tab;
                 
-                // Activar tab
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 
-                // Mostrar contenido correspondiente
                 rankingContents.forEach(content => {
                     content.classList.remove('active');
                     if (content.id === `${tabId}-ranking`) {
@@ -799,9 +626,12 @@
             });
         });
 
-// Inicializar el juego
+        // Inicializar el juego
         async function initGame() {
             try {
+                // Inicializar elementos de vida
+                lifeElements = document.querySelectorAll('.life');
+                
                 // Crear o unirse a una partida existente
                 const existingGames = await pb.collection('games').getFullList({
                     filter: 'status = "waiting"'
@@ -839,34 +669,38 @@
                 return; // Ya estamos suscritos
             }
             
-            realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
-                if (e.action === 'update') {
-                    const gameData = e.record;
-                    
-                    // Actualizar contador de jugadores
-                    playersCount.textContent = gameData.players_count;
-                    
-                    // Si el juego ha comenzado
-                    if (gameData.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
-                        startGame();
+            try {
+                realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
+                    if (e.action === 'update') {
+                        const gameData = e.record;
+                        
+                        // Actualizar contador de jugadores
+                        playersCount.textContent = gameData.players_count;
+                        
+                        // Si el juego ha comenzado
+                        if (gameData.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
+                            startGame();
+                        }
+                        
+                        // Si es el final del juego
+                        if (gameData.status === "finished" && document.getElementById('game-screen').classList.contains('active')) {
+                            endGame();
+                        }
                     }
-                    
-                    // Si es el final del juego
-                    if (gameData.status === "finished" && document.getElementById('game-screen').classList.contains('active')) {
-                        endGame();
+                });
+                
+                // También suscribirse a cambios en jugadores
+                await pb.collection('players').subscribe('*', (e) => {
+                    if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
+                        updatePlayersList();
                     }
-                }
-            });
-            
-            // También suscribirse a cambios en jugadores
-            await pb.collection('players').subscribe('*', (e) => {
-                if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
-                    updatePlayersList();
-                }
-            });
+                });
+            } catch (error) {
+                console.error("Error en suscripción en tiempo real:", error);
+            }
         }
 
-        // Selección de equipo (se mantiene igual)
+        // Selección de equipo
         teamElements.forEach(team => {
             team.addEventListener('click', () => {
                 teamElements.forEach(t => t.classList.remove('selected'));
@@ -920,11 +754,11 @@
         // Actualizar lista de jugadores
         async function updatePlayersList() {
             try {
-                const playersList = await pb.collection('players').getFullList({
+                const playersListData = await pb.collection('players').getFullList({
                     filter: `game = "${gameId}" && connected = true`
                 });
                 
-                players = playersList;
+                players = playersListData;
                 playersCount.textContent = players.length;
                 
                 // Limpiar lista
@@ -956,6 +790,7 @@
         // Iniciar juego
         async function startGame() {
             try {
+                console.log("Iniciando juego...");
                 // Actualizar estado del juego
                 await pb.collection('games').update(gameId, {
                     status: "started",
@@ -967,6 +802,7 @@
                 startTimer();
             } catch (error) {
                 console.error("Error iniciando juego:", error);
+                alert("Error al iniciar el juego. Intenta nuevamente.");
             }
         }
 
@@ -1049,7 +885,7 @@
             }, 1500);
         }
 
-        // Efecto al perder una vida (se mantiene igual)
+        // Efecto al perder una vida
         function loseLife() {
             const remainingLives = currentPlayer.lives;
             if (lifeElements.length > remainingLives) {
@@ -1062,7 +898,7 @@
             }
         }
 
-        // Iniciar temporizador (se mantiene igual)
+        // Iniciar temporizador
         function startTimer() {
             clearInterval(timer);
             timeLeft = 30;
@@ -1186,7 +1022,7 @@
             }
         }
 
-        // Mostrar pantalla específica (se mantiene igual)
+        // Mostrar pantalla específica
         function showScreen(screenId) {
             screens.forEach(screen => {
                 screen.classList.remove('active');
