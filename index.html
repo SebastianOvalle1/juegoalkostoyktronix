@@ -805,7 +805,7 @@
             }
         }
 
-     // Inicializar el juego
+    // Inicializar el juego
 async function initGame() {
     hideError();
     
@@ -825,7 +825,17 @@ async function initGame() {
 
         if (existingGames.length > 0) {
             gameId = existingGames[0].id;
-            // Obtener jugadores existentes inmediatamente
+            // Obtener el estado actual del juego
+            const game = await pb.collection('games').getOne(gameId);
+            
+            // Si el juego ya comenzó, unirse directamente
+            if (game.status === "started") {
+                await updatePlayersList();
+                startGame();
+                return;
+            }
+            
+            // Obtener jugadores existentes
             await updatePlayersList();
         } else {
             const game = await pb.collection('games').create({
@@ -865,14 +875,20 @@ async function subscribeToRealtime() {
                 // Actualizar contador de jugadores
                 playersCount.textContent = gameData.players_count;
                 
-                // Si el juego ha comenzado
-                if (gameData.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
-                    startGame();
+                // Si el juego ha comenzado (para todos los jugadores)
+                if (gameData.status === "started") {
+                    // Si estamos en la pantalla de espera, cambiar a la pantalla de juego
+                    if (document.getElementById('waiting-screen').classList.contains('active')) {
+                        startGame();
+                    }
                 }
                 
                 // Si es el final del juego
-                if (gameData.status === "finished" && document.getElementById('game-screen').classList.contains('active')) {
-                    endGame();
+                if (gameData.status === "finished") {
+                    // Si estamos en la pantalla de juego, cambiar a la pantalla de puntuaciones
+                    if (document.getElementById('game-screen').classList.contains('active')) {
+                        endGame();
+                    }
                 }
             }
         });
@@ -888,6 +904,7 @@ async function subscribeToRealtime() {
         console.error("Error en suscripción en tiempo real:", error);
     }
 }
+
         // Selección de equipo
         teamElements.forEach(team => {
             team.addEventListener('click', () => {
@@ -951,7 +968,7 @@ async function subscribeToRealtime() {
             }
         }
 
-       // Actualizar lista de jugadores
+      // Actualizar lista de jugadores
 async function updatePlayersList() {
     try {
         const playersListData = await pb.collection('players').getFullList({
@@ -977,7 +994,7 @@ async function updatePlayersList() {
             playersListElement.appendChild(playerElement);
         });
         
-        // Mostrar/ocultar botón de inicio - lógica corregida
+        // Mostrar/ocultar botón de inicio
         if (players.length > 0 && currentPlayer) {
             // Verificar si el jugador actual es el primero en unirse
             const sortedPlayers = [...players].sort((a, b) => new Date(a.created) - new Date(b.created));
@@ -991,34 +1008,38 @@ async function updatePlayersList() {
         } else {
             startGameBtn.style.display = 'none';
         }
+        
+        // Si el juego ya comenzó pero este jugador aún está en la pantalla de espera
+        const game = await pb.collection('games').getOne(gameId);
+        if (game.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
+            startGame();
+        }
     } catch (error) {
         console.error("Error actualizando lista de jugadores:", error);
     }
 }
 
- // Iniciar juego
+// Iniciar juego
 async function startGame() {
     try {
-        console.log("Iniciando juego...");
+        console.log("Iniciando juego para todos los jugadores...");
         
-        // Solo el primer jugador puede iniciar el juego
+        // Solo el primer jugador puede iniciar el juego para todos
         const sortedPlayers = [...players].sort((a, b) => new Date(a.created) - new Date(b.created));
         const firstPlayer = sortedPlayers[0];
         
-        if (currentPlayer && currentPlayer.id !== firstPlayer.id) {
-            console.log("Solo el primer jugador puede iniciar el juego");
-            return;
+        // Si el jugador actual es el primero, actualizar el estado del juego
+        if (currentPlayer && currentPlayer.id === firstPlayer.id) {
+            await pb.collection('games').update(gameId, {
+                status: "started",
+                started_at: new Date(),
+                current_question: 0
+            });
         }
         
-        // Actualizar estado del juego
-        await pb.collection('games').update(gameId, {
-            status: "started",
-            started_at: new Date(),
-            current_question: 0
-        });
-        
+        // Todos los jugadores cargan la pantalla de juego
         showScreen('game-screen');
-        loadQuestion();
+        await loadQuestion();
         startTimer();
     } catch (error) {
         showError(
