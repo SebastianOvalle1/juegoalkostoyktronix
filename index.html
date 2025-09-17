@@ -715,9 +715,10 @@
 
         // Suscribirse a actualizaciones en tiempo real
         async function subscribeToRealtime() {
-            if (realtimeSubscription) {
-                realtimeSubscription.unsubscribe();
-            }
+            if(realtimeSubscription){
+  realtimeSubscription.unsubscribe();
+}
+subscribeToRealtime();
             
             try {
                 // Suscribirse a cambios en el juego
@@ -1054,9 +1055,9 @@
                 players.forEach((player, index) => {
                     const playerElement = document.createElement('div');
                     playerElement.classList.add('player-score');
-                    if (player.id === currentPlayer.id) {
-                        playerElement.classList.add('highlight');
-                    }
+                    if (currentPlayer && player.id === currentPlayer.id) {
+    playerElement.classList.add('highlight');
+}
                     playerElement.innerHTML = `
                         <span>${index + 1}. ${player.name} <small>(Equipo ${player.team})</small></span>
                         <span>${player.score} puntos</span>
@@ -1068,7 +1069,8 @@
                 teamsScoreboard.innerHTML = '';
                 sortedTeams.forEach((team, index) => {
                     const teamElement = document.createElement('div');
-                    teamElement.classList.add('team-score', `team-${team.name}-bg`);
+                    const teamClass = `team-${team.name.replace(/\s+/g, '-').toLowerCase()}-bg`;
+teamElement.classList.add('team-score', teamClass);
                     teamElement.innerHTML = `
                         <div>
                             <span class="team-icon">${team.icon}</span>
