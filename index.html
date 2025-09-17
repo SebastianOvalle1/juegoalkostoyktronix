@@ -361,7 +361,7 @@
     <div class="container">
         <h1>🎯 Quiz Battle - Yo Puedo - Alkosto/Ktronix 🎯</h1>
 
-	<div id="error-message" class="error-message" style="display: none;">
+        <div id="error-message" class="error-message" style="display: none;">
             <h3>Error de conexión</h3>
             <p id="error-text">No se pudo conectar con el servidor.</p>
             <div class="debug-info" id="debug-info"></div>
@@ -682,24 +682,24 @@
                 lifeElements = document.querySelectorAll('.life');
                 
                 // Crear o unirse a una partida existente
-const existingGames = await pb.collection('games').getFullList({
-    filter: 'status = "waiting"',
-    sort: '-created' // Ordenar por más reciente
-});
+                const existingGames = await pb.collection('games').getFullList({
+                    filter: 'status = "waiting"',
+                    sort: '-created' // Ordenar por más reciente
+                });
 
-if (existingGames.length > 0) {
-    gameId = existingGames[0].id;
-    // Obtener jugadores existentes inmediatamente
-    await updatePlayersList();
-} else {
-    const game = await pb.collection('games').create({
-        code: Math.floor(1000 + Math.random() * 9000).toString(),
-        status: "waiting",
-        players_count: 0, // Iniciar en 0
-        current_question: 0
-    });
-    gameId = game.id;
-}
+                if (existingGames.length > 0) {
+                    gameId = existingGames[0].id;
+                    // Obtener jugadores existentes inmediatamente
+                    await updatePlayersList();
+                } else {
+                    const game = await pb.collection('games').create({
+                        code: Math.floor(1000 + Math.random() * 9000).toString(),
+                        status: "waiting",
+                        players_count: 0,
+                        current_question: 0
+                    });
+                    gameId = game.id;
+                }
                 
                 // Suscribirse a cambios en tiempo real
                 await subscribeToRealtime();
@@ -720,6 +720,7 @@ if (existingGames.length > 0) {
             }
             
             try {
+                // Suscribirse a cambios en el juego
                 realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
                     if (e.action === 'update') {
                         const gameData = e.record;
@@ -739,13 +740,13 @@ if (existingGames.length > 0) {
                     }
                 });
                 
-                // También suscribirse a cambios en jugadores de ESTA partida específica
-await pb.collection('players').subscribe('*', (e) => {
-    // Verificar que el jugador pertenece a esta partida
-    if (e.record.game === gameId) {
-        updatePlayersList();
-    }
-});
+                // También suscribirse a cambios en jugadores
+                await pb.collection('players').subscribe('*', async (e) => {
+                    // Verificar que el jugador pertenece a esta partida
+                    if (e.record.game === gameId) {
+                        await updatePlayersList();
+                    }
+                });
             } catch (error) {
                 console.error("Error en suscripción en tiempo real:", error);
             }
@@ -765,11 +766,6 @@ await pb.collection('players').subscribe('*', (e) => {
                 showError("No hay conexión", "Por favor, revisa tu conexión e intenta nuevamente.");
                 return;
             }
-
-// Actualizar contador de jugadores en la partida
-await pb.collection('games').update(gameId, {
-    players_count: players.length + 1 // Usar players.length en lugar de existingGames[0].players_count
-});
 
             const name = playerNameInput.value.trim();
             const selectedTeam = document.querySelector('.team.selected');
@@ -804,6 +800,11 @@ await pb.collection('games').update(gameId, {
                     connected: true
                 };
                 
+                // Actualizar contador de jugadores en la partida
+                await pb.collection('games').update(gameId, {
+                    players_count: players.length + 1
+                });
+                
                 showScreen('waiting-screen');
                 await updatePlayersList();
             } catch (error) {
@@ -818,7 +819,8 @@ await pb.collection('games').update(gameId, {
         async function updatePlayersList() {
             try {
                 const playersListData = await pb.collection('players').getFullList({
-                    filter: `game = "${gameId}" && connected = true`
+                    filter: `game = "${gameId}" && connected = true`,
+                    sort: 'created' // Ordenar por fecha de creación para determinar el primer jugador
                 });
                 
                 players = playersListData;
@@ -840,17 +842,17 @@ await pb.collection('games').update(gameId, {
                 });
                 
                 // Mostrar/ocultar botón de inicio - lógica corregida
-if (players.length > 0) {
-    // Verificar si el jugador actual es el primero en unirse
-    // Esto asume que el primer jugador en la lista es el primero que se unió
-    if (players[0].id === currentPlayer.id) {
-        startGameBtn.style.display = 'block';
-    } else {
-        startGameBtn.style.display = 'none';
-    }
-} else {
-    startGameBtn.style.display = 'none';
-}
+                if (players.length > 0 && currentPlayer) {
+                    // Verificar si el jugador actual es el primero en unirse
+                    // Comparar con el primer jugador de la lista ordenada por creación
+                    if (players[0].id === currentPlayer.id) {
+                        startGameBtn.style.display = 'block';
+                    } else {
+                        startGameBtn.style.display = 'none';
+                    }
+                } else {
+                    startGameBtn.style.display = 'none';
+                }
             } catch (error) {
                 console.error("Error actualizando lista de jugadores:", error);
             }
