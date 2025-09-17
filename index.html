@@ -480,8 +480,11 @@
     
     <script>
         // Configuración de PocketBase
-        const POCKETBASE_URL = 'https://was-pink.pockethost.io/';
-        let pb = new PocketBase(POCKETBASE_URL);
+const POCKETBASE_URL = 'https://was-pink.pockethost.io/';
+let pb = new PocketBase(POCKETBASE_URL);
+
+// Desactivar autocancelación globalmente (opcional, dependiendo de la versión)
+pb.autoCancellation(false);
         
         // Estado del juego
         let players = [];
@@ -968,12 +971,27 @@ async function subscribeToRealtime() {
             }
         }
 
-      // Actualizar lista de jugadores
+     // Actualizar lista de jugadores
+let lastUpdateTime = 0;
+const UPDATE_COOLDOWN = 1000; // 1 segundo entre actualizaciones
+
 async function updatePlayersList() {
+    const now = Date.now();
+    if (now - lastUpdateTime < UPDATE_COOLDOWN) {
+        return; // Evitar actualizaciones demasiado frecuentes
+    }
+    lastUpdateTime = now;
+    
     try {
+        // Usar parámetros únicos para evitar autocancelación
+        const uniqueParam = new Date().getTime();
         const playersListData = await pb.collection('players').getFullList({
             filter: `game = "${gameId}" && connected = true`,
-            sort: 'created'
+            sort: 'created',
+            // Agregar parámetro único para evitar autocancelación
+            $autoCancel: false,
+            // Agregar timestamp único como parámetro de consulta
+            timestamp: uniqueParam
         });
         
         players = playersListData;
@@ -1010,9 +1028,18 @@ async function updatePlayersList() {
         }
         
         // Si el juego ya comenzó pero este jugador aún está en la pantalla de espera
-        const game = await pb.collection('games').getOne(gameId);
-        if (game.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
-            startGame();
+        try {
+            const uniqueParam = new Date().getTime();
+            const game = await pb.collection('games').getOne(gameId, {
+                $autoCancel: false,
+                timestamp: uniqueParam
+            });
+            
+            if (game.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
+                startGame();
+            }
+        } catch (error) {
+            console.error("Error verificando estado del juego:", error);
         }
     } catch (error) {
         console.error("Error actualizando lista de jugadores:", error);
@@ -1030,10 +1057,14 @@ async function startGame() {
         
         // Si el jugador actual es el primero, actualizar el estado del juego
         if (currentPlayer && currentPlayer.id === firstPlayer.id) {
+            // Usar una marca de tiempo única para evitar autocancelación
+            const uniqueTimestamp = new Date().getTime();
             await pb.collection('games').update(gameId, {
                 status: "started",
                 started_at: new Date(),
-                current_question: 0
+                current_question: 0,
+                // Agregar un campo único para evitar autocancelación
+                unique_start: uniqueTimestamp
             });
         }
         
@@ -1049,11 +1080,16 @@ async function startGame() {
     }
 }
 
-  // Cargar pregunta
+ // Cargar pregunta
 async function loadQuestion() {
     try {
-        // Obtener el estado actual del juego
-        const game = await pb.collection('games').getOne(gameId);
+        // Obtener el estado actual del juego con parámetro único
+        const uniqueParam = new Date().getTime();
+        const game = await pb.collection('games').getOne(gameId, {
+            $autoCancel: false,
+            timestamp: uniqueParam
+        });
+        
         currentQuestionIndex = game.current_question || 0;
         
         if (currentQuestionIndex >= questions.length) {
@@ -1121,15 +1157,23 @@ async function selectAnswer(e) {
     
     // Actualizar jugador en PocketBase
     try {
+        // Usar parámetro único para evitar autocancelación
+        const uniqueParam = new Date().getTime();
         await pb.collection('players').update(currentPlayer.id, {
             score: currentPlayer.score,
             lives: currentPlayer.lives
+        }, {
+            $autoCancel: false
         });
         
         // Avanzar a la siguiente pregunta para todos
         const nextQuestionIndex = currentQuestionIndex + 1;
         await pb.collection('games').update(gameId, {
-            current_question: nextQuestionIndex
+            current_question: nextQuestionIndex,
+            // Agregar campo único para evitar autocancelación
+            unique_update: uniqueParam
+        }, {
+            $autoCancel: false
         });
         
         setTimeout(() => {
