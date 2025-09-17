@@ -754,12 +754,20 @@ pb.autoCancellation(false);
             }
         ];
 
-        // Event Listeners
-        startBtn.addEventListener('click', () => showScreen('register-screen'));
-        joinBtn.addEventListener('click', registerPlayer);
-        startGameBtn.addEventListener('click', startGame);
-        playAgainBtn.addEventListener('click', () => window.location.reload());
-        retryBtn.addEventListener('click', initGame);
+        // Event Listeners - VERSIÓN MEJORADA
+startBtn.addEventListener('click', () => {
+    showScreen('register-screen');
+    // Pequeño delay para que la UI se actualice antes de init
+    setTimeout(initGame, 100);
+});
+
+joinBtn.addEventListener('click', registerPlayer);
+startGameBtn.addEventListener('click', () => {
+    // Pequeño delay para evitar autocancelación
+    setTimeout(startGame, 100);
+});
+playAgainBtn.addEventListener('click', () => window.location.reload());
+retryBtn.addEventListener('click', initGame);
 
         // Tabs para ranking
         tabs.forEach(tab => {
@@ -777,6 +785,11 @@ pb.autoCancellation(false);
                 });
             });
         });
+
+// Función de delay para evitar conflictos
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
         // Función para mostrar errores
         function showError(message, details = '') {
@@ -808,7 +821,7 @@ pb.autoCancellation(false);
             }
         }
 
-    // Inicializar el juego
+// Inicializar el juego - VERSIÓN MEJORADA
 async function initGame() {
     hideError();
     
@@ -820,41 +833,57 @@ async function initGame() {
         // Inicializar elementos de vida
         lifeElements = document.querySelectorAll('.life');
         
-        // Crear o unirse a una partida existente
+        // Buscar juegos existentes con un request único
+        const requestKey = `init_game_${Date.now()}`;
         const existingGames = await pb.collection('games').getFullList({
             filter: 'status = "waiting"',
-            sort: '-created'
+            sort: '-created',
+            requestKey: requestKey,
+            $autoCancel: false
         });
 
         if (existingGames.length > 0) {
             gameId = existingGames[0].id;
-            // Obtener el estado actual del juego
-            const game = await pb.collection('games').getOne(gameId);
+            console.log("Uniéndose a juego existente:", gameId);
             
-            // Si el juego ya comenzó, unirse directamente
+            // Obtener el estado actual del juego con request único
+            const gameRequestKey = `get_game_${Date.now()}`;
+            const game = await pb.collection('games').getOne(gameId, {
+                requestKey: gameRequestKey,
+                $autoCancel: false
+            });
+            
+            // Verificar estado inmediatamente
             if (game.status === "started") {
+                console.log("Juego ya iniciado, uniéndose directamente");
                 await updatePlayersList();
-                startGame();
+                startGameForAllPlayers();
                 return;
             }
             
             // Obtener jugadores existentes
             await updatePlayersList();
         } else {
+            console.log("Creando nuevo juego");
+            const createRequestKey = `create_game_${Date.now()}`;
             const game = await pb.collection('games').create({
                 code: Math.floor(1000 + Math.random() * 9000).toString(),
                 status: "waiting",
                 players_count: 0,
                 current_question: 0
+            }, {
+                requestKey: createRequestKey,
+                $autoCancel: false
             });
             gameId = game.id;
+            console.log("Nuevo juego creado:", gameId);
         }
         
         // Suscribirse a cambios en tiempo real
         await subscribeToRealtime();
         
-        console.log("Juego inicializado con ID:", gameId);
     } catch (error) {
+        console.error("Error detallado inicializando juego:", error);
         showError(
             "Error inicializando el juego", 
             `Detalles: ${error.message || 'Error desconocido'}`
@@ -862,23 +891,31 @@ async function initGame() {
     }
 }
 
-// Suscribirse a cambios en tiempo real
+// Suscribirse a cambios en tiempo real - VERSIÓN MEJORADA
 async function subscribeToRealtime() {
     try {
+        console.log("Intentando suscribirse a tiempo real, gameId:", gameId);
+        
+        if (!gameId) {
+            console.error("No hay gameId para suscribirse");
+            return;
+        }
+
         // Desuscribirse si ya hay una suscripción
         if (realtimeSubscription) {
             try { 
-                realtimeSubscription.unsubscribe(); 
+                console.log("Desuscribiendo suscripción existente");
+                await realtimeSubscription.unsubscribe(); 
             } catch(e){ 
-                console.log("Error al desuscribirse (puede ignorarse):", e);
+                console.log("Error al desuscribirse:", e);
             }
         }
 
         // Suscribirse a cambios en el juego específico
         realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
-            console.log("Evento de juego recibido:", e.action, "Estado:", e.record.status);
+            console.log("📢 Evento de juego recibido:", e.action, "Estado:", e.record?.status);
             
-            if (e.action === 'update') {
+            if (e.action === 'update' && e.record) {
                 const gameData = e.record;
                 
                 // Actualizar contador de jugadores
@@ -888,39 +925,44 @@ async function subscribeToRealtime() {
                 
                 // Si el juego comenzó, todos los jugadores deben cambiar de pantalla
                 if (gameData.status === "started") {
-                    console.log("Juego iniciado detectado - cambiando a pantalla de juego");
+                    console.log("🚀 Juego iniciado - Cambiando a pantalla de juego");
                     // Pequeño delay para asegurar que todo esté listo
                     setTimeout(() => {
-                        startGameForAllPlayers();
-                    }, 500);
+                        if (document.getElementById('waiting-screen').classList.contains('active') || 
+                            document.getElementById('register-screen').classList.contains('active')) {
+                            startGameForAllPlayers();
+                        }
+                    }, 300);
                 }
                 
                 // Si el juego terminó
                 if (gameData.status === "finished") {
-                    console.log("Juego terminado detectado");
-                    endGame();
+                    console.log("🎯 Juego terminado");
+                    if (document.getElementById('game-screen').classList.contains('active')) {
+                        endGame();
+                    }
                 }
             }
         });
 
-        console.log("Suscripción a juego activada");
+        console.log("✅ Suscripción a juego activada");
 
         // Suscribirse a cambios en jugadores de este juego
         await pb.collection('players').subscribe(`game = "${gameId}"`, async (e) => {
-            console.log("Evento de jugador recibido:", e.action);
+            console.log("👤 Evento de jugador:", e.action);
             await updatePlayersList();
         });
 
     } catch (error) {
-        console.error("Error en suscripción en tiempo real:", error);
-        showError("Error de conexión en tiempo real", error.message);
+        console.error("❌ Error en suscripción en tiempo real:", error);
         
-        // Reintentar suscripción después de 5 segundos
+        // Reintentar suscripción después de 3 segundos
         setTimeout(() => {
             subscribeToRealtime();
-        }, 5000);
+        }, 3000);
     }
 }
+
         // Selección de equipo
         teamElements.forEach(team => {
             team.addEventListener('click', () => {
@@ -1036,39 +1078,52 @@ async function updatePlayersList() {
     }
 }
 
-// Iniciar juego (solo para el primer jugador)
+// Iniciar juego (solo para el primer jugador) - VERSIÓN MEJORADA
 async function startGame() {
     try {
+        console.log("🔧 Intentando iniciar juego...");
+        
         // Solo el primer jugador puede iniciar el juego
         const sortedPlayers = [...players].sort((a, b) => new Date(a.created) - new Date(b.created));
         const firstPlayer = sortedPlayers[0];
 
-        if (!currentPlayer || !firstPlayer) return;
-
-        if (currentPlayer.id !== firstPlayer.id) {
-            alert("Solo el primer jugador puede iniciar el juego");
+        if (!currentPlayer || !firstPlayer) {
+            console.error("No hay jugadores o currentPlayer");
             return;
         }
 
-        console.log("Host iniciando juego...");
+        if (currentPlayer.id !== firstPlayer.id) {
+            console.log("No es el primer jugador, no puede iniciar");
+            return;
+        }
+
+        console.log("🎮 Host iniciando juego...");
         
-        // Desactivar autocancelación para esta solicitud específica
+        // Request único para evitar autocancelación
+        const requestKey = `start_game_${Date.now()}`;
+        
         await pb.collection('games').update(gameId, {
             status: "started",
             started_at: new Date().toISOString(),
             current_question: 0
         }, { 
-            $autoCancel: false  // Desactivar autocancelación para esta solicitud
+            requestKey: requestKey,
+            $autoCancel: false
         });
 
-        console.log("Estado del juego actualizado a 'started'");
+        console.log("✅ Estado del juego actualizado a 'started'");
         
         // El host también necesita cambiar de pantalla
         startGameForAllPlayers();
 
     } catch (error) {
-        console.error("Error detallado iniciando juego:", error);
+        console.error("❌ Error detallado iniciando juego:", error);
         showError("Error iniciando juego", `Detalles: ${error.message}`);
+        
+        // Reintentar después de 2 segundos
+        setTimeout(() => {
+            startGame();
+        }, 2000);
     }
 }
 
@@ -1077,33 +1132,43 @@ function generateUniqueRequestKey(prefix) {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Función para que todos los jugadores inicien el juego
+// Función para que todos los jugadores inicien el juego - VERSIÓN MEJORADA
 async function startGameForAllPlayers() {
     try {
-        console.log("Iniciando juego para todos los jugadores...");
+        console.log("🌐 Iniciando juego para todos los jugadores...");
         
-        // Verificar que estamos en la pantalla correcta
-        if (!document.getElementById('waiting-screen').classList.contains('active')) {
-            console.log("No está en pantalla de espera, ignorando inicio");
+        // Verificar que no estamos ya en game-screen
+        if (document.getElementById('game-screen').classList.contains('active')) {
+            console.log("Ya está en pantalla de juego, ignorando");
             return;
         }
         
-        // Todos los jugadores cargan la pantalla de juego
+        console.log("🔄 Cambiando a pantalla de juego");
         showScreen('game-screen');
         
+        // Pequeña pausa para que la UI se actualice
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Obtener el estado actual del juego sin autocancelación
+        const requestKey = `get_game_state_${Date.now()}`;
         const game = await pb.collection('games').getOne(gameId, { 
+            requestKey: requestKey,
             $autoCancel: false 
         });
         
         currentQuestionIndex = game.current_question || 0;
+        console.log("📝 Cargando pregunta:", currentQuestionIndex);
         
         await loadQuestion();
         startTimer();
         
     } catch (error) {
-        console.error("Error en startGameForAllPlayers:", error);
-        showError("Error al unirse al juego", error.message);
+        console.error("❌ Error en startGameForAllPlayers:", error);
+        
+        // Reintentar después de 1 segundo
+        setTimeout(() => {
+            startGameForAllPlayers();
+        }, 1000);
     }
 }
 
