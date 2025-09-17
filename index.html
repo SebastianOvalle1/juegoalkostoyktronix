@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz Battle - Actividad Empresarial</title>
+    <!-- Estilos (se mantienen igual) -->
     <style>
         /* Estilos existentes (se mantienen igual) */
         :root {
@@ -355,29 +356,7 @@
             opacity: 0.8;
             margin-top: 5px;
         }
-        
-        .admin-controls {
-            margin-top: 20px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            text-align: center;
-        }
-        
-        .game-code {
-            font-size: 1.2rem;
-            margin: 10px 0;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            display: inline-block;
-        }
     </style>
-    
-    <!-- Firebase App (the core Firebase SDK) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <!-- Firebase Firestore -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -389,24 +368,12 @@
             <p>Responde preguntas, acumula puntos y compite con tus colegas.</p>
             <div style="text-align: center; margin-top: 30px;">
                 <button id="start-btn" class="btn">Comenzar Juego</button>
-                <button id="join-existing-btn" class="btn btn-secondary">Unirse a Juego Existente</button>
-            </div>
-        </div>
-        
-        <!-- Pantalla de unirse a juego existente -->
-        <div id="join-existing-screen" class="screen">
-            <h2>Unirse a juego existente</h2>
-            <input type="text" id="game-code-input" class="input-field" placeholder="Ingresa el código del juego">
-            <div style="text-align: center; margin-top: 20px;">
-                <button id="join-with-code-btn" class="btn">Unirse</button>
-                <button id="back-to-welcome-btn" class="btn btn-secondary">Volver</button>
             </div>
         </div>
         
         <!-- Pantalla de registro -->
         <div id="register-screen" class="screen">
             <h2>Únete a la batalla</h2>
-            <div class="game-code" id="display-game-code">Código: Cargando...</div>
             <input type="text" id="player-name" class="input-field" placeholder="Ingresa tu nombre">
             <h3>Elige tu equipo:</h3>
             <div class="team-container">
@@ -439,12 +406,11 @@
         <!-- Pantalla de espera -->
         <div id="waiting-screen" class="screen">
             <h2>Esperando a que comience el juego...</h2>
-            <div class="game-code" id="waiting-game-code">Código: Cargando...</div>
             <p>Jugadores conectados: <span id="players-count">0</span></p>
             <div class="players-grid" id="players-list">
                 <!-- Jugadores en tiempo real -->
             </div>
-            <div class="admin-controls" id="admin-controls" style="display: none;">
+            <div style="text-align: center; margin-top: 20px;">
                 <button id="start-game-btn" class="btn">Iniciar Juego</button>
             </div>
         </div>
@@ -504,21 +470,45 @@
         </div>
     </div>
 
+	<script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+    
     <script>
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAGsZqn6nUwUSf64qJt0pBoqhFtsvaKFkI",
-            authDomain: "yo-puedo-90d4b.firebaseapp.com",
-            projectId: "yo-puedo-90d4b",
-            storageBucket: "yo-puedo-90d4b.firebasestorage.app",
-            messagingSenderId: "82041954135",
-            appId: "1:82041954135:web:66390b305289ee78cca812",
-            measurementId: "G-8YVDR17Y2M"
-        };
+        // Configuración de PocketBase
+        const POCKETBASE_URL = 'https://was-pink.pockethost.io/'; // Cambiar por tu URL
+        const pb = new PocketBase(POCKETBASE_URL);
+        
+        // Estado del juego
+        let players = [];
+        let currentPlayer = null;
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let lives = 3;
+        let timer;
+        let timeLeft = 30;
+        let lifeElements = [];
+        let gameId = null;
+        let realtimeSubscription = null;
 
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        // Elementos del DOM (se mantienen igual)
+        const screens = document.querySelectorAll('.screen');
+        const startBtn = document.getElementById('start-btn');
+        const joinBtn = document.getElementById('join-btn');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const playerNameInput = document.getElementById('player-name');
+        const playersList = document.getElementById('players-list');
+        const playersCount = document.getElementById('players-count');
+        const questionText = document.getElementById('question-text');
+        const answersContainer = document.querySelector('.answers-container');
+        const currentPlayerElement = document.getElementById('current-player');
+        const currentScoreElement = document.getElementById('current-score');
+        const currentLivesElement = document.getElementById('current-lives');
+        const timerElement = document.getElementById('timer');
+        const scoreboard = document.getElementById('scoreboard');
+        const teamsScoreboard = document.getElementById('teams-scoreboard');
+        const teamElements = document.querySelectorAll('.team');
+        const tabs = document.querySelectorAll('.tab');
+        const rankingContents = document.querySelectorAll('.ranking-content');
 
         // Datos del juego - Preguntas
         const questions = [
@@ -759,12 +749,6 @@
         let timer;
         let timeLeft = 30;
         let lifeElements = [];
-        let gameId = null;
-        let gameRef = null;
-        let playersRef = null;
-        let unsubscribePlayers = null;
-        let unsubscribeGame = null;
-        let isHost = false;
 
         // Elementos del DOM
         const screens = document.querySelectorAll('.screen');
@@ -786,23 +770,15 @@
         const teamElements = document.querySelectorAll('.team');
         const tabs = document.querySelectorAll('.tab');
         const rankingContents = document.querySelectorAll('.ranking-content');
-        const joinExistingBtn = document.getElementById('join-existing-btn');
-        const joinExistingScreen = document.getElementById('join-existing-screen');
-        const gameCodeInput = document.getElementById('game-code-input');
-        const joinWithCodeBtn = document.getElementById('join-with-code-btn');
-        const backToWelcomeBtn = document.getElementById('back-to-welcome-btn');
-        const displayGameCode = document.getElementById('display-game-code');
-        const waitingGameCode = document.getElementById('waiting-game-code');
-        const adminControls = document.getElementById('admin-controls');
 
+        // Almacenamiento simple en localStorage para simular "servidor"
+        const GAME_CODE = "quizbattle-" + Math.floor(1000 + Math.random() * 9000);
+        
         // Event Listeners
-        startBtn.addEventListener('click', createNewGame);
-        joinExistingBtn.addEventListener('click', () => showScreen('join-existing-screen'));
+        startBtn.addEventListener('click', () => showScreen('register-screen'));
         joinBtn.addEventListener('click', registerPlayer);
         startGameBtn.addEventListener('click', startGame);
         playAgainBtn.addEventListener('click', () => window.location.reload());
-        joinWithCodeBtn.addEventListener('click', joinExistingGame);
-        backToWelcomeBtn.addEventListener('click', () => showScreen('welcome-screen'));
 
         // Tabs para ranking
         tabs.forEach(tab => {
@@ -823,13 +799,74 @@
             });
         });
 
-        // Inicializar el juego
-        function initGame() {
-            // Inicializar elementos de vida
-            lifeElements = document.querySelectorAll('.life');
+// Inicializar el juego
+        async function initGame() {
+            try {
+                // Crear o unirse a una partida existente
+                const existingGames = await pb.collection('games').getFullList({
+                    filter: 'status = "waiting"'
+                });
+                
+                if (existingGames.length > 0) {
+                    gameId = existingGames[0].id;
+                    await pb.collection('games').update(gameId, {
+                        players_count: existingGames[0].players_count + 1
+                    });
+                } else {
+                    const game = await pb.collection('games').create({
+                        code: Math.floor(1000 + Math.random() * 9000).toString(),
+                        status: "waiting",
+                        players_count: 1,
+                        current_question: 0
+                    });
+                    gameId = game.id;
+                }
+                
+                // Suscribirse a cambios en tiempo real
+                await subscribeToRealtime();
+                
+                console.log("Juego inicializado con ID:", gameId);
+            } catch (error) {
+                console.error("Error inicializando el juego:", error);
+                alert("Error conectando al servidor. Recargando página...");
+                window.location.reload();
+            }
         }
 
-        // Selección de equipo
+        // Suscribirse a actualizaciones en tiempo real
+        async function subscribeToRealtime() {
+            if (realtimeSubscription) {
+                return; // Ya estamos suscritos
+            }
+            
+            realtimeSubscription = await pb.collection('games').subscribe(gameId, async (e) => {
+                if (e.action === 'update') {
+                    const gameData = e.record;
+                    
+                    // Actualizar contador de jugadores
+                    playersCount.textContent = gameData.players_count;
+                    
+                    // Si el juego ha comenzado
+                    if (gameData.status === "started" && document.getElementById('waiting-screen').classList.contains('active')) {
+                        startGame();
+                    }
+                    
+                    // Si es el final del juego
+                    if (gameData.status === "finished" && document.getElementById('game-screen').classList.contains('active')) {
+                        endGame();
+                    }
+                }
+            });
+            
+            // También suscribirse a cambios en jugadores
+            await pb.collection('players').subscribe('*', (e) => {
+                if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
+                    updatePlayersList();
+                }
+            });
+        }
+
+        // Selección de equipo (se mantiene igual)
         teamElements.forEach(team => {
             team.addEventListener('click', () => {
                 teamElements.forEach(t => t.classList.remove('selected'));
@@ -837,83 +874,8 @@
             });
         });
 
-        // Crear un nuevo juego
-        function createNewGame() {
-    // Generar ID único para el juego
-    gameId = "quiz-" + Math.random().toString(36).substring(2, 10).toUpperCase();
-    
-    // Crear documento del juego en Firestore
-    gameRef = db.collection('games').doc(gameId);
-    playersRef = db.collection('games').doc(gameId).collection('players');
-    
-    gameRef.set({
-        status: 'waiting',
-        currentQuestion: 0,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp, // CORREGIDO
-        startedAt: null,
-        finishedAt: null
-    }).then(() => {
-        isHost = true;
-        displayGameCode.textContent = `Código: ${gameId}`;
-        showScreen('register-screen');
-        
-        // Escuchar cambios en el estado del juego
-        unsubscribeGame = gameRef.onSnapshot((doc) => {
-            const gameData = doc.data();
-            if (gameData.status === 'playing' && document.getElementById('waiting-screen').classList.contains('active')) {
-                startGame();
-            }
-        });
-    }).catch((error) => {
-        console.error("Error creating game: ", error);
-        alert("Error al crear el juego. Intenta nuevamente.");
-    });
-}
-
-        // Unirse a un juego existente
-        function joinExistingGame() {
-            const code = gameCodeInput.value.trim().toUpperCase();
-            
-            if (!code) {
-                alert('Por favor ingresa un código de juego');
-                return;
-            }
-            
-            // Verificar si el juego existe
-            gameId = code;
-            gameRef = db.collection('games').doc(gameId);
-            playersRef = db.collection('games').doc(gameId).collection('players');
-            
-            gameRef.get().then((doc) => {
-                if (doc.exists) {
-                    const gameData = doc.data();
-                    if (gameData.status === 'finished') {
-                        alert('Este juego ya ha finalizado');
-                        return;
-                    }
-                    
-                    isHost = false;
-                    displayGameCode.textContent = `Código: ${gameId}`;
-                    showScreen('register-screen');
-                    
-                    // Escuchar cambios en el estado del juego
-                    unsubscribeGame = gameRef.onSnapshot((doc) => {
-                        const gameData = doc.data();
-                        if (gameData.status === 'playing' && document.getElementById('waiting-screen').classList.contains('active')) {
-                            startGame();
-                        }
-                    });
-                } else {
-                    alert('Código de juego inválido');
-                }
-            }).catch((error) => {
-                console.error("Error joining game: ", error);
-                alert("Error al unirse al juego. Intenta nuevamente.");
-            });
-        }
-
         // Registrar jugador
-        function registerPlayer() {
+        async function registerPlayer() {
             const name = playerNameInput.value.trim();
             const selectedTeam = document.querySelector('.team.selected');
             
@@ -927,115 +889,118 @@
                 return;
             }
             
-            const playerId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-            
-            currentPlayer = {
-                id: playerId,
-                name,
-                team: selectedTeam.dataset.team,
-                score: 0,
-                lives: 3,
-                connected: true,
-                isHost: isHost
-            };
-            
-            // Guardar jugador en Firestore
-            playersRef.doc(playerId).set(currentPlayer)
-                .then(() => {
-                    // Escuchar cambios en la lista de jugadores
-                    unsubscribePlayers = playersRef.onSnapshot((snapshot) => {
-                        players = [];
-                        snapshot.forEach((doc) => {
-                            players.push(doc.data());
-                        });
-                        
-                        updatePlayersList();
-                    });
-                    
-                    waitingGameCode.textContent = `Código: ${gameId}`;
-                    showScreen('waiting-screen');
-                })
-                .catch((error) => {
-                    console.error("Error adding player: ", error);
-                    alert("Error al unirse al juego. Intenta nuevamente.");
+            try {
+                // Crear jugador en PocketBase
+                const player = await pb.collection('players').create({
+                    name,
+                    team: selectedTeam.dataset.team,
+                    score: 0,
+                    lives: 3,
+                    game: gameId,
+                    connected: true
                 });
+                
+                currentPlayer = {
+                    id: player.id,
+                    name,
+                    team: selectedTeam.dataset.team,
+                    score: 0,
+                    lives: 3,
+                    connected: true
+                };
+                
+                showScreen('waiting-screen');
+                await updatePlayersList();
+            } catch (error) {
+                console.error("Error registrando jugador:", error);
+                alert("Error al registrar jugador. Intenta nuevamente.");
+            }
         }
 
         // Actualizar lista de jugadores
-        function updatePlayersList() {
-            playersList.innerHTML = '';
-            playersCount.textContent = players.length;
-            
-            players.forEach(player => {
-                const playerElement = document.createElement('div');
-                playerElement.classList.add('player-card', `team-${player.team}`);
-                playerElement.innerHTML = `
-                    <div><strong>${player.name}</strong></div>
-                    <div>Equipo ${player.team}</div>
-                `;
-                playersList.appendChild(playerElement);
-            });
-            
-            // Mostrar controles de administrador si es el host
-            if (isHost) {
-                adminControls.style.display = 'block';
-            } else {
-                adminControls.style.display = 'none';
+        async function updatePlayersList() {
+            try {
+                const playersList = await pb.collection('players').getFullList({
+                    filter: `game = "${gameId}" && connected = true`
+                });
+                
+                players = playersList;
+                playersCount.textContent = players.length;
+                
+                // Limpiar lista
+                const playersListElement = document.getElementById('players-list');
+                playersListElement.innerHTML = '';
+                
+                // Agregar jugadores
+                players.forEach(player => {
+                    const playerElement = document.createElement('div');
+                    playerElement.classList.add('player-card', `team-${player.team}`);
+                    playerElement.innerHTML = `
+                        <div><strong>${player.name}</strong></div>
+                        <div>Equipo ${player.team}</div>
+                    `;
+                    playersListElement.appendChild(playerElement);
+                });
+                
+                // Mostrar/ocultar botón de inicio según si es el primer jugador
+                if (players.length > 0 && players[0].id === currentPlayer.id) {
+                    startGameBtn.style.display = 'block';
+                } else {
+                    startGameBtn.style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Error actualizando lista de jugadores:", error);
             }
         }
 
         // Iniciar juego
-        function startGame() {
-            // Actualizar estado del juego en Firestore
-            gameRef.update({
-                status: 'playing',
-                startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                currentQuestion: 0
-            }).then(() => {
+        async function startGame() {
+            try {
+                // Actualizar estado del juego
+                await pb.collection('games').update(gameId, {
+                    status: "started",
+                    started_at: new Date()
+                });
+                
                 showScreen('game-screen');
                 loadQuestion();
                 startTimer();
-            }).catch((error) => {
-                console.error("Error starting game: ", error);
-            });
+            } catch (error) {
+                console.error("Error iniciando juego:", error);
+            }
         }
 
         // Cargar pregunta
         function loadQuestion() {
-            gameRef.get().then((doc) => {
-                const gameData = doc.data();
-                currentQuestionIndex = gameData.currentQuestion;
-                
-                if (currentQuestionIndex >= questions.length) {
-                    endGame();
-                    return;
-                }
-                
-                const question = questions[currentQuestionIndex];
-                questionText.textContent = question.question;
-                
-                answersContainer.innerHTML = '';
-                question.answers.forEach(answer => {
-                    const button = document.createElement('button');
-                    button.classList.add('answer-btn');
-                    button.textContent = answer.text;
-                    button.dataset.correct = answer.correct;
-                    button.addEventListener('click', selectAnswer);
-                    answersContainer.appendChild(button);
-                });
-                
-                currentPlayerElement.textContent = currentPlayer.name;
-                currentScoreElement.textContent = currentPlayer.score;
-                currentLivesElement.textContent = currentPlayer.lives;
-                
-                // Reiniciar temporizador
-                timeLeft = 30;
-                timerElement.textContent = timeLeft;
+            if (currentQuestionIndex >= questions.length) {
+                endGame();
+                return;
+            }
+            
+            const question = questions[currentQuestionIndex];
+            questionText.textContent = question.question;
+            
+            answersContainer.innerHTML = '';
+            question.answers.forEach(answer => {
+                const button = document.createElement('button');
+                button.classList.add('answer-btn');
+                button.textContent = answer.text;
+                button.dataset.correct = answer.correct;
+                button.addEventListener('click', selectAnswer);
+                answersContainer.appendChild(button);
             });
+            
+            currentPlayerElement.textContent = currentPlayer.name;
+            currentScoreElement.textContent = currentPlayer.score;
+            currentLivesElement.textContent = currentPlayer.lives;
+            
+            // Reiniciar temporizador
+            timeLeft = 30;
+            timerElement.textContent = timeLeft;
         }
 
         // Seleccionar respuesta
-        function selectAnswer(e) {
+        async function selectAnswer(e) {
             clearInterval(timer);
             const selectedButton = e.target;
             const correct = selectedButton.dataset.correct === 'true';
@@ -1061,52 +1026,43 @@
                 
                 if (currentPlayer.lives <= 0) {
                     setTimeout(() => {
-                        endGameForPlayer();
+                        endGame();
                     }, 1500);
                     return;
                 }
             }
             
-            // Actualizar jugador en Firestore
-            playersRef.doc(currentPlayer.id).update({
-                score: currentPlayer.score,
-                lives: currentPlayer.lives
-            }).then(() => {
-                setTimeout(() => {
-                    // Avanzar a la siguiente pregunta (solo el host controla esto)
-                    if (isHost) {
-                        gameRef.update({
-                            currentQuestion: currentQuestionIndex + 1
-                        }).then(() => {
-                            loadQuestion();
-                            startTimer();
-                        });
-                    }
-                }, 1500);
-            });
+            // Actualizar jugador en PocketBase
+            try {
+                await pb.collection('players').update(currentPlayer.id, {
+                    score: currentPlayer.score,
+                    lives: currentPlayer.lives
+                });
+            } catch (error) {
+                console.error("Error actualizando jugador:", error);
+            }
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+                startTimer();
+            }, 1500);
         }
 
-        // Efecto al perder una vida
+        // Efecto al perder una vida (se mantiene igual)
         function loseLife() {
             const remainingLives = currentPlayer.lives;
             if (lifeElements.length > remainingLives) {
                 const lifeToLose = lifeElements[remainingLives];
                 lifeToLose.classList.add('lost');
                 
-                // Después de la animación, ocultar permanentemente
                 setTimeout(() => {
                     lifeToLose.style.display = 'none';
                 }, 500);
             }
         }
 
-        // Finalizar juego para un jugador
-        function endGameForPlayer() {
-            showScreen('scores-screen');
-            calculateScores();
-        }
-
-        // Iniciar temporizador
+        // Iniciar temporizador (se mantiene igual)
         function startTimer() {
             clearInterval(timer);
             timeLeft = 30;
@@ -1121,55 +1077,38 @@
                     currentPlayer.lives--;
                     currentLivesElement.textContent = currentPlayer.lives;
                     
-                    // Efecto de perder vida
                     loseLife();
                     
-                    // Actualizar jugador en Firestore
-                    playersRef.doc(currentPlayer.id).update({
-                        lives: currentPlayer.lives
-                    }).then(() => {
-                        if (currentPlayer.lives <= 0) {
-                            endGameForPlayer();
-                        } else if (isHost) {
-                            // Avanzar a la siguiente pregunta
-                            gameRef.update({
-                                currentQuestion: currentQuestionIndex + 1
-                            }).then(() => {
-                                loadQuestion();
-                                startTimer();
-                            });
-                        }
-                    });
+                    if (currentPlayer.lives <= 0) {
+                        endGame();
+                    } else {
+                        currentQuestionIndex++;
+                        loadQuestion();
+                        startTimer();
+                    }
                 }
             }, 1000);
         }
 
         // Finalizar juego
-        function endGame() {
-            if (isHost) {
-                // Actualizar estado del juego en Firestore
-                gameRef.update({
-                    status: 'finished',
-                    finishedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }).then(() => {
-                    showScreen('scores-screen');
-                    calculateScores();
-                });
-            } else {
-                showScreen('scores-screen');
-                calculateScores();
-            }
-        }
-
-        // Calcular puntuaciones
-        function calculateScores() {
-            playersRef.get().then((snapshot) => {
-                const allPlayers = [];
-                snapshot.forEach((doc) => {
-                    allPlayers.push(doc.data());
+        async function endGame() {
+            try {
+                // Actualizar estado del juego
+                await pb.collection('games').update(gameId, {
+                    status: "finished",
+                    finished_at: new Date()
                 });
                 
-                // Calcular puntuaciones por equipos usando promedios
+                // Obtener todos los jugadores
+                const allPlayers = await pb.collection('players').getFullList({
+                    filter: `game = "${gameId}"`
+                });
+                
+                players = allPlayers;
+                
+                showScreen('scores-screen');
+                
+                // Calcular puntuaciones por equipos
                 const teamScores = {
                     red: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🔴" },
                     blue: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🔵" },
@@ -1177,11 +1116,11 @@
                     yellow: { totalScore: 0, playerCount: 0, average: 0, players: [], icon: "🟡" }
                 };
                 
-                // Ordenar jugadores por puntuación y calcular puntuación de equipos
-                allPlayers.sort((a, b) => b.score - a.score);
+                // Ordenar jugadores por puntuación
+                players.sort((a, b) => b.score - a.score);
                 
-                // Calcular totales y contar jugadores por equipo
-                allPlayers.forEach(player => {
+                // Calcular totales por equipo
+                players.forEach(player => {
                     if (teamScores[player.team]) {
                         teamScores[player.team].totalScore += player.score;
                         teamScores[player.team].playerCount++;
@@ -1196,14 +1135,14 @@
                     }
                 }
                 
-                // Convertir a array y ordenar equipos por promedio (no por suma)
+                // Convertir a array y ordenar equipos por promedio
                 const sortedTeams = Object.entries(teamScores)
                     .map(([name, data]) => ({ name, ...data }))
                     .sort((a, b) => b.average - a.average);
                 
                 // Generar tabla de puntuaciones individuales
                 scoreboard.innerHTML = '';
-                allPlayers.forEach((player, index) => {
+                players.forEach((player, index) => {
                     const playerElement = document.createElement('div');
                     playerElement.classList.add('player-score');
                     if (player.id === currentPlayer.id) {
@@ -1216,7 +1155,7 @@
                     scoreboard.appendChild(playerElement);
                 });
                 
-                // Generar tabla de puntuaciones por equipos (usando promedios)
+                // Generar tabla de puntuaciones por equipos
                 teamsScoreboard.innerHTML = '';
                 sortedTeams.forEach((team, index) => {
                     const teamElement = document.createElement('div');
@@ -1242,10 +1181,12 @@
                         teamsScoreboard.appendChild(playerElement);
                     });
                 });
-            });
+            } catch (error) {
+                console.error("Error finalizando juego:", error);
+            }
         }
 
-        // Mostrar pantalla específica
+        // Mostrar pantalla específica (se mantiene igual)
         function showScreen(screenId) {
             screens.forEach(screen => {
                 screen.classList.remove('active');
@@ -1253,21 +1194,26 @@
             document.getElementById(screenId).classList.add('active');
         }
 
-        // Limpiar suscripciones al cerrar la página
-        window.addEventListener('beforeunload', () => {
-            if (unsubscribePlayers) unsubscribePlayers();
-            if (unsubscribeGame) unsubscribeGame();
-            
-            // Marcar jugador como desconectado
-            if (currentPlayer && playersRef) {
-                playersRef.doc(currentPlayer.id).update({
-                    connected: false
-                });
-            }
-        });
-
         // Iniciar el juego cuando se carga la página
         window.addEventListener('load', initGame);
+        
+        // Limpiar suscripciones al cerrar la página
+        window.addEventListener('beforeunload', async () => {
+            if (realtimeSubscription) {
+                realtimeSubscription.unsubscribe();
+            }
+            
+            // Marcar jugador como desconectado
+            if (currentPlayer) {
+                try {
+                    await pb.collection('players').update(currentPlayer.id, {
+                        connected: false
+                    });
+                } catch (error) {
+                    console.error("Error marcando jugador como desconectado:", error);
+                }
+            }
+        });
     </script>
 </body>
 </html>
